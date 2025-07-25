@@ -35,6 +35,7 @@ def summarize_insertions(bedpe_file, out, failed, distance):
                 if (curr_strand == "-" and strand_1 == '+') or (line_insertion != insertion_strand):
                     inconsistent_read += 1
                     failed_list.append(line.strip())
+                    # next try to report inconsistent reads per insertion.
                 else:
                     insertion_strand = line_insertion
                     curr_strand = strand_1
