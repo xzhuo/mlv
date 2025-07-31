@@ -69,7 +69,7 @@ def main():
                 continue
             sample, id = fields[3].split('.', 1)  # assuming the sample with id is in the 4th column separated by a dot
             sample_list.add(sample)
-
+    print("{} samples found in input file".format(len(sample_list)))
     results = []
     if args.threads == 1:
         for sample in sample_list:
