@@ -10,9 +10,7 @@ def fisher_test(input_file, rmsk_file, genomesize_file, sample, te):
     rmsk = pybedtools.BedTool(rmsk_file)
     # filter rmsk: only keep the rows that match the specified mobile element
     te_bed = rmsk.filter(lambda x: x[3] == te)
-    # run bedtools intersect to get the intersection of the input bed and the TE bed
-    intersect_bed = input.intersect(te_bed, u=True)
-    read_ids = [str(x.name) for x in intersect_bed]
+
     # filter the input bed: only keep the rows that match the specified sample
     sample_bed = input.filter(lambda x: x[3].startswith(sample))
     # fisher exact test
@@ -22,7 +20,7 @@ def fisher_test(input_file, rmsk_file, genomesize_file, sample, te):
     right_tail = fisher_output.right_tail
     left_tail = fisher_output.left_tail
     intersect_number = fisher_output.table['in -a']['in -b']
-    return [sample, te, intersect_number, ratio, two_tail, left_tail, right_tail, read_ids]
+    return [sample, te, intersect_number, ratio, two_tail, left_tail, right_tail]
     # out_line = "\t".join(str(x) for x in [sample, te, intersect_number, ratio, two_tail, left_tail, right_tail])
     # return out_line
 
@@ -58,6 +56,18 @@ def main():
         raise ValueError("--genome size file does not exist!")
 
     te = args.mei
+
+    # print the list of samples that intersect with the specified mobile element.
+    input = pybedtools.BedTool(input_file)
+    rmsk = pybedtools.BedTool(rmsk_file)
+    # filter rmsk: only keep the rows that match the specified mobile element
+    te_bed = rmsk.filter(lambda x: x[3] == te)
+    # run bedtools intersect to get the intersection of the input bed and the TE bed
+    intersect_bed = input.intersect(te_bed, u=True)
+    read_ids = [str(x.name) for x in intersect_bed]
+    with open(args.list, 'w') as lst:
+        lst.write("\n".join(read_ids) + "\n")
+
     # parse the input file and generate a unique list of samples
     sample_list = set()
     with open(input_file, 'r') as f:
@@ -71,6 +81,7 @@ def main():
             sample_list.add(sample)
     print("{} samples found in input file".format(len(sample_list)))
     results = []
+
     if args.threads == 1:
         for sample in sample_list:
             out_line = fisher_test(input_file, rmsk_file, genomesize_file, sample, args.mei)
@@ -80,11 +91,9 @@ def main():
             results = pool.starmap(fisher_test, map(lambda x:(input_file, rmsk_file, genomesize_file, x, args.mei),sample_list))
 
     with open(args.out, 'w') as out:
-        with open(args.list, 'w') as lst:
-            for each_out in results:
-                out_line = "\t".join(str(x) for x in each_out[:7])  # only keep the first 7 elements for output
-                out.write(out_line + "\n")
-                lst.write("\n".join(each_out[7]) + "\n")
+        for each_out in results:
+            out_line = "\t".join(str(x) for x in each_out)  # format the output line
+            out.write(out_line + "\n")
 
 if __name__ == '__main__':
     main()
