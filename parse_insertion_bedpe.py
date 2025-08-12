@@ -19,6 +19,7 @@ def summarize_insertions(bedpe_file, out, failed, distance):
     consistent_read = int()
     inconsistent_read = int()
     failed_list = []
+    curr_num_reads = int()
     with open(bedpe_file, 'r') as f:
         for line in f:
             if line.startswith('#'):
@@ -32,6 +33,7 @@ def summarize_insertions(bedpe_file, out, failed, distance):
                 # existing insertion
                 curr_pos = end_1
                 line_insertion = "-" if strand_1 == strand_2 else '+'
+                curr_num_reads += 1
                 if (curr_strand == "-" and strand_1 == '+') or (line_insertion != insertion_strand):
                     inconsistent_read += 1
                     failed_list.append(line.strip())
@@ -46,7 +48,8 @@ def summarize_insertions(bedpe_file, out, failed, distance):
                 curr_pos = end_1
                 insertion_strand = "-" if strand_1 == strand_2 else '+'
                 curr_strand = strand_1
-                insertion_number += 1
+                insertion_number += 1 if curr_num_reads > 1 else 0
+                curr_num_reads = 1
 
     with open(out, 'w') as f:
         f.write(f"{insertion_number}\t{consistent_read}\t{inconsistent_read}\n")
