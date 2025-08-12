@@ -50,6 +50,7 @@ def summarize_insertions(bedpe_file, out, failed, distance):
                 curr_strand = strand_1
                 insertion_number += 1 if curr_num_reads > 1 else 0
                 curr_num_reads = 1
+        insertion_number += 1 if curr_num_reads > 1 else 0
 
     with open(out, 'w') as f:
         f.write(f"{insertion_number}\t{consistent_read}\t{inconsistent_read}\n")
