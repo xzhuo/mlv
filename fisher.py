@@ -73,18 +73,18 @@ def main():
             fields = line.strip().split('\t')
             if len(fields) < 4:
                 continue
-            sample, id = fields[3].split('.', 2)  # assuming the sample with id is in the 4th column separated by a dot
+            sample, id = fields[3].split('.', 1)  # assuming the sample with id is in the 4th column separated by a dot
             sample_list.add(sample)
     print("{} samples found in input file".format(len(sample_list)))
     results = []
 
     if args.threads == 1:
         for sample in sample_list:
-            out_line = fisher_test(input, te_bed, genomesize_file, sample)
+            out_line = fisher_test(input, te_bed, genomesize_file, sample, te)
             results.append(out_line)
     else:
         with Pool(processes=args.threads) as pool:
-            results = pool.starmap(fisher_test, map(lambda x:(input, te_bed, genomesize_file, x),sample_list))
+            results = pool.starmap(fisher_test, map(lambda x:(input, te_bed, genomesize_file, x, te),sample_list))
 
     with open(args.out, 'w') as out:
         for each_out in results:
