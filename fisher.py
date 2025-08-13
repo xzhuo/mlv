@@ -57,7 +57,7 @@ def main():
     input = pybedtools.BedTool(input_file)
     rmsk = pybedtools.BedTool(rmsk_file)
     # filter rmsk: only keep the rows that match the specified mobile element
-    te_bed = rmsk.filter(lambda x: x[3] == te)
+    te_bed = rmsk.filter(lambda x: x[3] == te).saveas()
     # run bedtools intersect to get the intersection of the input bed and the TE bed
     intersect_bed = input.intersect(te_bed, u=True)
     read_ids = [str(x.name) for x in intersect_bed]
