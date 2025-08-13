@@ -1,11 +1,14 @@
 import os
 import argparse
 import pybedtools
-from itertools import repeat
+# from itertools import repeat
 from multiprocessing import Pool
 
-def fisher_test(input, te_bed, genomesize_file, sample, te):
+def fisher_test(input_file, tmp_te_file, genomesize_file, sample, te):
     print("working on: {} in sample {}".format(te, sample))
+    input = pybedtools.BedTool(input_file)
+    te_bed = pybedtools.BedTool(tmp_te_file)
+    # filter rmsk: only keep the rows that match the specified mobile element
 
     # filter the input bed: only keep the rows that match the specified sample
     sample_bed = input.filter(lambda x: x[3].startswith(sample))
@@ -56,8 +59,9 @@ def main():
     # print the list of samples that intersect with the specified mobile element.
     input = pybedtools.BedTool(input_file)
     rmsk = pybedtools.BedTool(rmsk_file)
+    tmp_te_file = "tmp_{}.mm10.bed".format(te)
     # filter rmsk: only keep the rows that match the specified mobile element
-    te_bed = rmsk.filter(lambda x: x[3] == te).saveas()
+    te_bed = rmsk.filter(lambda x: x[3] == te).saveas(tmp_te_file)  # save as a new BedTool object
     # run bedtools intersect to get the intersection of the input bed and the TE bed
     intersect_bed = input.intersect(te_bed, u=True)
     read_ids = [str(x.name) for x in intersect_bed]
@@ -80,16 +84,17 @@ def main():
 
     if args.threads == 1:
         for sample in sample_list:
-            out_line = fisher_test(input, te_bed, genomesize_file, sample, te)
+            out_line = fisher_test(input_file, tmp_te_file, genomesize_file, sample, te)
             results.append(out_line)
     else:
         with Pool(processes=args.threads) as pool:
-            results = pool.starmap(fisher_test, map(lambda x:(input, te_bed, genomesize_file, x, te),sample_list))
+            results = pool.starmap(fisher_test, map(lambda x:(input_file, tmp_te_file, genomesize_file, x, te),sample_list))
 
     with open(args.out, 'w') as out:
         for each_out in results:
             out_line = "\t".join(str(x) for x in each_out)  # format the output line
             out.write(out_line + "\n")
+    os.remove(tmp_te_file)
 
 if __name__ == '__main__':
     main()
