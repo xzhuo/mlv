@@ -73,7 +73,7 @@ def main():
             fields = line.strip().split('\t')
             if len(fields) < 4:
                 continue
-            sample, id = fields[3].split('.', 1)  # assuming the sample with id is in the 4th column separated by a dot
+            sample, id = fields[3].split('.', 2)  # assuming the sample with id is in the 4th column separated by a dot
             sample_list.add(sample)
     print("{} samples found in input file".format(len(sample_list)))
     results = []
