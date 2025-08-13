@@ -4,12 +4,8 @@ import pybedtools
 from itertools import repeat
 from multiprocessing import Pool
 
-def fisher_test(input_file, rmsk_file, genomesize_file, sample, te):
+def fisher_test(input, te_bed, genomesize_file, sample, te):
     print("working on: {} in sample {}".format(te, sample))
-    input = pybedtools.BedTool(input_file)
-    rmsk = pybedtools.BedTool(rmsk_file)
-    # filter rmsk: only keep the rows that match the specified mobile element
-    te_bed = rmsk.filter(lambda x: x[3] == te)
 
     # filter the input bed: only keep the rows that match the specified sample
     sample_bed = input.filter(lambda x: x[3].startswith(sample))
@@ -84,11 +80,11 @@ def main():
 
     if args.threads == 1:
         for sample in sample_list:
-            out_line = fisher_test(input_file, rmsk_file, genomesize_file, sample, args.mei)
+            out_line = fisher_test(input, te_bed, genomesize_file, sample)
             results.append(out_line)
     else:
         with Pool(processes=args.threads) as pool:
-            results = pool.starmap(fisher_test, map(lambda x:(input_file, rmsk_file, genomesize_file, x, args.mei),sample_list))
+            results = pool.starmap(fisher_test, map(lambda x:(input, te_bed, genomesize_file, x),sample_list))
 
     with open(args.out, 'w') as out:
         for each_out in results:
