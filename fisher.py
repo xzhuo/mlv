@@ -82,7 +82,7 @@ def main():
 
 
     with open(args.out, 'w') as out:
-        out.write(out_line + "\n")
+        out.write("\t".join(str(x) for x in out_line) + "\n")
 
 if __name__ == '__main__':
     main()
