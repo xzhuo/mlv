@@ -4,16 +4,15 @@ import pybedtools
 # from itertools import repeat
 from multiprocessing import Pool
 
-def fisher_test(input_file, tmp_te_file, genomesize_file, sample, te):
+def fisher_test(input, rmsk, genomesize_file, sample, te):
     print("working on: {} in sample {}".format(te, sample))
-    input = pybedtools.BedTool(input_file)
-    te_bed = pybedtools.BedTool(tmp_te_file)
+
     # filter rmsk: only keep the rows that match the specified mobile element
 
     # filter the input bed: only keep the rows that match the specified sample
-    sample_bed = input.filter(lambda x: x[3].startswith(sample))
+    # sample_bed = input.filter(lambda x: x[3].startswith(sample))
     # fisher exact test
-    fisher_output = sample_bed.fisher(te_bed, g=genomesize_file)
+    fisher_output = input.fisher(rmsk, g=genomesize_file)
     ratio = fisher_output.ratio
     two_tail = fisher_output.two_tail
     right_tail = fisher_output.right_tail
@@ -59,42 +58,31 @@ def main():
     # print the list of samples that intersect with the specified mobile element.
     input = pybedtools.BedTool(input_file)
     rmsk = pybedtools.BedTool(rmsk_file)
-    tmp_te_file = "tmp_{}.mm10.bed".format(te)
     # filter rmsk: only keep the rows that match the specified mobile element
-    te_bed = rmsk.filter(lambda x: x[3] == te).saveas(tmp_te_file)  # save as a new BedTool object
     # run bedtools intersect to get the intersection of the input bed and the TE bed
-    intersect_bed = input.intersect(te_bed, u=True)
+    intersect_bed = input.intersect(rmsk, u=True)
     read_ids = [str(x.name) for x in intersect_bed]
     with open(args.list, 'w') as lst:
         lst.write("\n".join(read_ids) + "\n")
 
-    # parse the input file and generate a unique list of samples
-    sample_list = set()
-    with open(input_file, 'r') as f:
-        for line in f:
-            if line.startswith('#'):
-                continue
-            fields = line.strip().split('\t')
-            if len(fields) < 4:
-                continue
-            sample, id = fields[3].split('.', 1)  # assuming the sample with id is in the 4th column separated by a dot
-            sample_list.add(sample)
-    print("{} samples found in input file".format(len(sample_list)))
-    results = []
+    # # parse the input file and generate a unique list of samples
+    # sample_list = set()
+    # with open(input_file, 'r') as f:
+    #     for line in f:
+    #         if line.startswith('#'):
+    #             continue
+    #         fields = line.strip().split('\t')
+    #         if len(fields) < 4:
+    #             continue
+    #         sample, id = fields[3].split('.', 1)  # assuming the sample with id is in the 4th column separated by a dot
+    #         sample_list.add(sample)
+    # print("{} samples found in input file".format(len(sample_list)))
+    # results = []
+    out_line = fisher_test(input, rmsk, genomesize_file, input_file, te)
 
-    if args.threads == 1:
-        for sample in sample_list:
-            out_line = fisher_test(input_file, tmp_te_file, genomesize_file, sample, te)
-            results.append(out_line)
-    else:
-        with Pool(processes=args.threads) as pool:
-            results = pool.starmap(fisher_test, map(lambda x:(input_file, tmp_te_file, genomesize_file, x, te),sample_list))
 
     with open(args.out, 'w') as out:
-        for each_out in results:
-            out_line = "\t".join(str(x) for x in each_out)  # format the output line
-            out.write(out_line + "\n")
-    os.remove(tmp_te_file)
+        out.write(out_line + "\n")
 
 if __name__ == '__main__':
     main()
