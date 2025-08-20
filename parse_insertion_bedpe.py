@@ -53,7 +53,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
                 # new insertion
                 if len(curr_left_softclip) > 0 and len(curr_right_softclip) > 0:
                     # report soft-clipped reads
-                    tsd_list.append(curr_left_softclip + curr_right_softclip)
+                    tsd_list.extend(curr_left_softclip + curr_right_softclip)
                 curr_left_softclip = []
                 curr_right_softclip = []
                 if strand_1 == '+' and (re.search(r'(\d+)S', cigar_1) or re.search(r'(\d+)S', cigar_2)):
