@@ -32,19 +32,24 @@ def process_bed(input, out):
             all_samples.update(sample_set)
             if len(sample_set) > 1:
                 for sample_pair in itertools.combinations(sample_set, 2):
-                    # breakpoint()
                     paired_list = list(sample_pair)
                     paired_list.sort()
                     try:
                         matrix[paired_list[0]][paired_list[1]] += 1
                     except KeyError:
-                        matrix[paired_list[0]] = {paired_list[1]: 1}
+                        try:
+                            matrix[paired_list[0]][paired_list[1]] = 1
+                        except KeyError:
+                            matrix[paired_list[0]] = {paired_list[1]: 1}
             else:
                 one = sample_set.pop()
                 try:
                     matrix[one]["NA"] +=1
                 except KeyError:
-                    matrix[one] = {"NA": 1}
+                    try:
+                        matrix[one]["NA"] = 1
+                    except KeyError:
+                        matrix[one] = {"NA": 1}
     for sample in all_samples:
         if sample not in matrix:
             matrix[sample] = {}
