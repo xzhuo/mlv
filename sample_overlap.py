@@ -55,10 +55,10 @@ def process_bed(input, out):
                 matrix[sample]["NA"] = 0
 
     with open(out, 'w') as f:
-        sorted_keys = matrix.keys()
+        sorted_keys = list(matrix.keys())
         sorted_keys.sort()
         f.write("Sample\t" + "\t".join(str(x) for x in sorted_keys) + "\tNA"+ "\n")
-        for row in matrix:
+        for row in sorted_keys:
             line_list = list(map(lambda x: matrix[row][x], sorted_keys))
             line_list.append(matrix[row]["NA"])
             f.write(str(row) + "\t" + "\t".join(str(x) for x in line_list) + "\n")
