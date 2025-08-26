@@ -46,20 +46,15 @@ class Insertion:
         if read.position == "up":
             self.up_reads.append(read)
             self.up_softclip = self.up_softclip and read.soft_clip_1
-            try:
-                if read.upstream_boundary > self.upstream_boundary:
-                    self.upstream_boundary = read.upstream_boundary
-            except AttributeError:
-                self.upstream_boundary = read.upstream_boundary
+            self.upstream_boundary = max(self.upstream_boundary, read.upstream_boundary)
 
         if read.position == "down":
             self.down_reads.append(read)
             self.down_softclip = self.down_softclip and read.soft_clip_1
-            try:
-                if read.downstream_boundary < self.downstream_boundary:
+            if self.downstream_boundary == 0:
                     self.downstream_boundary = read.downstream_boundary
-            except AttributeError:
-                self.downstream_boundary = read.downstream_boundary
+            else:
+                self.downstream_boundary = min(self.downstream_boundary, read.downstream_boundary)
 
     def is_consistent(self, read, distance):
         if self.chrom == read.chrom_1 and read.start_1 < self.last_pos + distance:
