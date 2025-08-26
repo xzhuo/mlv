@@ -2,6 +2,68 @@ import os
 import argparse
 import re
 
+class Read:
+    def __init__(self, line):
+        self.line = line
+        self.dissect_line()
+
+    def dissect_line(self):
+        fields = self.line.strip().split()
+        self.chrom_1, start_1, end_1, self.chrom_2, start_2, end_2, self.name, self.strand_1, self.strand_2, self.cigar_1, self.cigar_2 = fields[:11]
+        self.start_1, self.end_1, self.start_2, self.end_2= map(int, [start_1, end_1, start_2, end_2])
+        self.insertion_strand = "-" if self.strand_1 == self.strand_2 else '+'
+        if self.strand_1 == '+':
+            self.position = "up"
+            self.upstream_boundary = self.end_1 
+        if self.strand_1 == '-':
+            self.position = "down"
+            self.downstream_boundary = self.start_1
+        if re.search(r'(\d+)S', self.cigar_1):
+            self.soft_clip_1 = True
+        if re.search(r'(\d+)S', self.cigar_2):
+            self.soft_clip_2 = True
+        self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
+
+
+
+
+class Insertion:
+    def __init__(self):
+        self.chrom = ''
+        self.strand = ''
+        self.insertion_strand = ''
+        self.up_reads = []
+        self.down_reads = []
+        self.upstream_boundary = int()
+        self.downstream_boundary = int()
+        self.soft_clipped_reads = []
+    
+    def add_read(self, read):
+        self.chrom = read.chrom_1
+        self.strand = read.strand_1
+        self.insertion_strand = read.insertion_strand
+        
+        if read.position == "up":
+            self.up_reads.append(read)
+            self.up_softclip = self.up_softclip and read.soft_clip_1
+            if read.upstream_boundary > self.upstream_boundary:
+                self.upstream_boundary = read.upstream_boundary
+        
+        if read.position == "down":
+            self.down_reads.append(read)
+            self.down_softclip = self.down_softclip and read.soft_clip_1
+            if read.downstream_boundary < self.downstream_boundary:
+                self.downstream_boundary = read.downstream_boundary
+    
+    def does_contain(self, read, distance):
+        if self.chrom == read.chrom_1 and read.start_1 < self.last_pos + distance:
+            pass
+            if self.insertion_strand == read.insertion_strand:
+                pass
+        else:
+            return False
+
+
 def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     '''
     five lines of bedpe file, must be sorted:
@@ -11,27 +73,21 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     chr1	9673014	9673104	emv2_LTR	383	473	ERR1856017.131318684	+	+	90M	90M
     '''
 
-    curr_chr = ''
-    curr_pos = int()
-    insertion_strand = ''
-    curr_strand = ''
-    insertion_number = int()
-    consistent_read = int()
-    inconsistent_read = int()
-    failed_list = []
-    curr_num_reads = int()
-    curr_left_softclip = []
-    curr_right_softclip = []
-    tsd_list = []
+    insertions = [] # a list of Insertion class.
     with open(bedpe_file, 'r') as f:
         for line in f:
             if line.startswith('#'):
                 continue
-            fields = line.strip().split()
-            if len(fields) < 9:
-                continue
-            chrom_1, start_1, end_1, chrom_2, start_2, end_2, name, strand_1, strand_2, cigar_1, cigar_2 = fields[:11]
-            start_1, end_1,start_2, end_2= map(int, [start_1, end_1, start_2, end_2])
+
+            read = Read(line)
+            if len(insertions) > 0 and insertions[-1].does_contain(read, distance):
+                insertions[-1].add_read(read)
+            else:
+                insertion = Insertion()
+                insertion.add_read(read)
+                insertions.append(insertion)
+
+
             if chrom_1 == curr_chr and start_1 < int(curr_pos) + distance:
                 # existing insertion
                 curr_pos = end_1
