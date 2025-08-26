@@ -126,7 +126,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
             sum_line = f"{insertion.chrom}\t{insertion.upstream_boundary}\t{insertion.downstream_boundary}\t{insertion.insertion_strand}\t{total_reads}\n"
             f.write(sum_line)
 
-    with open(out, 'w') as f:
+    with open(failed, 'w') as f:
         for insertion in tbd_insertions:
             total_reads = len(insertion.up_reads) + len(insertion.down_reads)
             sum_line = f"{insertion.chrom}\t{insertion.upstream_boundary}\t{insertion.downstream_boundary}\t{insertion.insertion_strand}\t{total_reads}\n"
