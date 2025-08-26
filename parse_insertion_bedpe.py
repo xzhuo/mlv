@@ -19,10 +19,8 @@ class Read:
         if self.strand_1 == '-':
             self.position = "down"
             self.downstream_boundary = self.start_1
-        if re.search(r'(\d+)S', self.cigar_1):
-            self.soft_clip_1 = True
-        if re.search(r'(\d+)S', self.cigar_2):
-            self.soft_clip_2 = True
+        self.soft_clip_1 = True if re.search(r'(\d+)S', self.cigar_1) else False
+        self.soft_clip_2 = True if re.search(r'(\d+)S', self.cigar_2) else False
         self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
 
 
@@ -36,6 +34,9 @@ class Insertion:
         self.downstream_boundary = int()
         self.soft_clipped_reads = []
         self.last_pos = int()
+        self.up_softclip = False
+        self.down_softclip = False
+
 
     def add_read(self, read):
         self.chrom = read.chrom_1
