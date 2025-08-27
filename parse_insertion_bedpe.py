@@ -1,6 +1,7 @@
 import os
 import argparse
 import re
+from statistics import median
 
 
 class Read:
@@ -30,8 +31,12 @@ class Insertion:
         self.insertion_strand = ''
         self.up_reads = []
         self.down_reads = []
-        self.upstream_boundary = int()
-        self.downstream_boundary = int()
+        self.up_tsd_reads = []
+        self.down_tsd_reads = []
+        self.upstream_limit = int()  # the insertion site must be larger than the upstream limit.
+        self.downstream_limit = int()  # the insertion site must be smaller than the downstream limit.
+        self.upstream_boundaries = []  # the list of all upstream boundaries from all softclipped reads.
+        self.downstream_boundaries = []  # the list of all downstream boundaries from all softclipped reads.
         self.soft_clipped_reads = []
         self.last_pos = int()
         self.up_softclip = False
@@ -46,27 +51,54 @@ class Insertion:
         if read.position == "up":
             self.up_reads.append(read)
             self.up_softclip = self.up_softclip and read.soft_clip_1
-            self.upstream_boundary = max(self.upstream_boundary, read.upstream_boundary)
+            self.upstream_limit = max(self.upstream_limit, read.upstream_boundary)
+            if read.soft_clip_1:
+                self.upstream_boundaries.append(read.upstream_boundary)
+            if read.any_soft_clip:
+                self.up_tsd_reads.append(read)
 
         if read.position == "down":
             self.down_reads.append(read)
             self.down_softclip = self.down_softclip and read.soft_clip_1
-            if self.downstream_boundary == 0:
-                    self.downstream_boundary = read.downstream_boundary
+            if self.downstream_limit == 0:
+                self.downstream_limit = read.downstream_boundary
             else:
-                self.downstream_boundary = min(self.downstream_boundary, read.downstream_boundary)
+                self.downstream_limit = min(self.downstream_limit, read.downstream_boundary)
+            if read.soft_clip_1:
+                self.downstream_boundaries.append(read.downstream_boundary)
+            if read.any_soft_clip:
+                self.down_tsd_reads.append(read)
+
+    def get_upstream_boundaries(self):
+        if len(self.upstream_boundaries) == 0:
+            return 0
+        else:
+            return median(self.upstream_boundaries)
+
+    def get_downstream_boundaries(self):
+        if len(self.downstream_boundaries) == 0:
+            return 0
+        else:
+            return median(self.downstream_boundaries)
+
+    def get_read_number(self):
+        return len(self.up_reads) + len(self.down_reads)
 
     def is_consistent(self, read, distance):
-        if self.chrom == read.chrom_1 and read.start_1 < self.last_pos + distance:
-            if self.insertion_strand == read.insertion_strand:
-                if len(self.down_reads) == 0:
+        if self.chrom == read.chrom_1 and self.insertion_strand == read.insertion_strand and read.start_1 < self.last_pos + distance:
+            if read.position == "up":
+                if (len(self.upstream_boundaries) == 0 or read.upstream_boundary - self.get_upstream_boundaries() < 6 ) and len(self.down_reads) == 0:
                     return True
-                elif read.position == "down":
+                else:
+                    return False
+            elif read.downstream_boundary - max(self.upstream_limit, self.downstream_limit) > -12:
+                if len(self.downstream_boundaries) == 0 or read.downstream_boundary - self.get_downstream_boundaries() < 6:
                     return True
                 else:
                     return False
             else:
                 return False
+
         else:
             return False
 
@@ -104,6 +136,8 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     consistent_insertions = []
     tbd_insertions = []
     for index, insertion in enumerate(insertions):
+        if insertion.get_total_reads() < 3:
+            continue
         if index == 0:
             if close_insertions(insertion, insertions[index + 1], distance):
                tbd_insertions.append(insertion)
@@ -122,14 +156,18 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
 
     with open(out, 'w') as f:
         for insertion in consistent_insertions:
-            total_reads = len(insertion.up_reads) + len(insertion.down_reads)
-            sum_line = f"{insertion.chrom}\t{insertion.upstream_boundary}\t{insertion.downstream_boundary}\t{insertion.insertion_strand}\t{total_reads}\n"
+            total_reads = insertion.get_total_reads()
+            start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
+            end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
+            sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
             f.write(sum_line)
 
     with open(failed, 'w') as f:
         for insertion in tbd_insertions:
-            total_reads = len(insertion.up_reads) + len(insertion.down_reads)
-            sum_line = f"{insertion.chrom}\t{insertion.upstream_boundary}\t{insertion.downstream_boundary}\t{insertion.insertion_strand}\t{total_reads}\n"
+            total_reads = insertion.get_total_reads()
+            start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
+            end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
+            sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
             f.write(sum_line)
 
             # if chrom_1 == curr_chr and start_1 < int(curr_pos) + distance:
