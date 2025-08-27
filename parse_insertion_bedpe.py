@@ -16,10 +16,10 @@ class Read:
         self.insertion_strand = "-" if self.strand_1 == self.strand_2 else '+'
         if self.strand_1 == '+':
             self.position = "up"
-            self.upstream_boundary = self.end_1 
+            self.up_edge = self.end_1 
         if self.strand_1 == '-':
             self.position = "down"
-            self.downstream_boundary = self.start_1
+            self.down_edge = self.start_1
         self.soft_clip_1 = True if re.search(r'(\d+)S', self.cigar_1) else False
         self.soft_clip_2 = True if re.search(r'(\d+)S', self.cigar_2) else False
         self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
@@ -33,10 +33,10 @@ class Insertion:
         self.down_reads = []
         self.up_tsd_reads = []
         self.down_tsd_reads = []
-        self.upstream_limit = int()  # the insertion site must be larger than the upstream limit.
-        self.downstream_limit = int()  # the insertion site must be smaller than the downstream limit.
-        self.upstream_boundaries = []  # the list of all upstream boundaries from all softclipped reads.
-        self.downstream_boundaries = []  # the list of all downstream boundaries from all softclipped reads.
+        self.up_limit = int()  # the insertion site must be larger than the upstream limit.
+        self.down_limit = int()  # the insertion site must be smaller than the downstream limit.
+        self.up_edgies = []  # the list of all upstream boundary from all softclipped reads.
+        self.down_edgies = []  # the list of all downstream boundary from all softclipped reads.
         self.soft_clipped_reads = []
         self.last_pos = int()
         self.up_softclip = False
@@ -51,54 +51,42 @@ class Insertion:
         if read.position == "up":
             self.up_reads.append(read)
             self.up_softclip = self.up_softclip and read.soft_clip_1
-            self.upstream_limit = max(self.upstream_limit, read.upstream_boundary)
+            self.up_limit = max(self.up_limit, read.up_edge)
             if read.soft_clip_1:
-                self.upstream_boundaries.append(read.upstream_boundary)
+                self.up_edgies.append(read.up_edge)
             if read.any_soft_clip:
                 self.up_tsd_reads.append(read)
 
         if read.position == "down":
             self.down_reads.append(read)
             self.down_softclip = self.down_softclip and read.soft_clip_1
-            if self.downstream_limit == 0:
-                self.downstream_limit = read.downstream_boundary
+            if self.down_limit == 0:
+                self.down_limit = read.down_edge
             else:
-                self.downstream_limit = min(self.downstream_limit, read.downstream_boundary)
+                self.down_limit = min(self.down_limit, read.down_edge)
             if read.soft_clip_1:
-                self.downstream_boundaries.append(read.downstream_boundary)
+                self.down_edgies.append(read.down_edge)
             if read.any_soft_clip:
                 self.down_tsd_reads.append(read)
 
-    def get_upstream_boundary(self):
-        if len(self.upstream_boundaries) == 0:
+    def get_up_edge(self):
+        if len(self.up_edgies) == 0:
             return 0
         else:
-            return median(self.upstream_boundaries)
+            return median(self.up_edgies)
 
-    def get_downstream_boundary(self):
-        if len(self.downstream_boundaries) == 0:
+    def get_down_edge(self):
+        if len(self.down_edgies) == 0:
             return 0
         else:
-            return median(self.downstream_boundaries)
+            return median(self.down_edgies)
 
     def get_read_number(self):
         return len(self.up_reads) + len(self.down_reads)
 
     def is_consistent(self, read, distance):
         if self.chrom == read.chrom_1 and self.insertion_strand == read.insertion_strand and read.start_1 < self.last_pos + distance:
-            if read.position == "up":
-                if (len(self.upstream_boundaries) == 0 or read.upstream_boundary - self.get_upstream_boundary() < 6 ) and len(self.down_reads) == 0:
-                    return True
-                else:
-                    return False
-            elif read.downstream_boundary - max(self.upstream_limit, self.downstream_limit) > -12:
-                if len(self.downstream_boundaries) == 0 or read.downstream_boundary - self.get_downstream_boundary() < 6:
-                    return True
-                else:
-                    return False
-            else:
-                return False
-
+            return True
         else:
             return False
 
@@ -157,16 +145,16 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     with open(out, 'w') as f:
         for insertion in consistent_insertions:
             total_reads = insertion.get_read_number()
-            start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
-            end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
+            start = insertion.get_up_edge() if insertion.get_up_edge() > 0 else f">{insertion.up_limit}"
+            end = insertion.get_down_edge() if insertion.get_down_edge() > 0 else f"<{insertion.down_limit}"
             sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
             f.write(sum_line)
 
     with open(failed, 'w') as f:
         for insertion in tbd_insertions:
             total_reads = insertion.get_read_number()
-            start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
-            end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
+            start = insertion.get_up_edge() if insertion.get_up_edge() > 0 else f">{insertion.up_limit}"
+            end = insertion.get_down_edge() if insertion.get_down_edge() > 0 else f"<{insertion.down_limit}"
             sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
             f.write(sum_line)
 
