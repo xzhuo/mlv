@@ -69,6 +69,9 @@ class Insertion:
             if read.any_soft_clip:
                 self.down_tsd_reads.append(read)
 
+    def resolve_insertion_site(self):
+        pass
+
     def get_up_edge(self):
         if len(self.up_edgies) == 0:
             return 0
@@ -113,14 +116,16 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
                 continue
 
             read = Read(line)
-            compatible_insertions = [i for i in insertions if i.is_consistent(read, distance)]
-            if len(compatible_insertions) == 0:
+            if len(insertions)> 0 and insertions[-1].is_consistent(read, distance):
+                insertions[-1].add_read(read)
+            else:
                 insertion = Insertion()
                 insertion.add_read(read)
                 insertions.append(insertion)
-            else:
-                compatible_insertions[0].add_read(read)
+    for insertion in insertions:
+        insertion.resolve_insertion_site()
 
+    # Now print the insertion to a file:
     consistent_insertions = []
     tbd_insertions = []
     for index, insertion in enumerate(insertions):
