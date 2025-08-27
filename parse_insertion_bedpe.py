@@ -136,7 +136,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     consistent_insertions = []
     tbd_insertions = []
     for index, insertion in enumerate(insertions):
-        if insertion.get_total_reads() < 3:
+        if insertion.get_read_number() < 3:
             continue
         if index == 0:
             if close_insertions(insertion, insertions[index + 1], distance):
@@ -156,7 +156,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
 
     with open(out, 'w') as f:
         for insertion in consistent_insertions:
-            total_reads = insertion.get_total_reads()
+            total_reads = insertion.get_read_number()
             start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
             end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
             sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
@@ -164,7 +164,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
 
     with open(failed, 'w') as f:
         for insertion in tbd_insertions:
-            total_reads = insertion.get_total_reads()
+            total_reads = insertion.get_read_number()
             start = insertion.get_upstream_boundary() if insertion.get_upstream_boundary() > 0 else f">{insertion.upstream_limit}"
             end = insertion.get_downstream_boundary() if insertion.get_downstream_boundary() > 0 else f"<{insertion.downstream_limit}"
             sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
