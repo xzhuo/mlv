@@ -69,13 +69,13 @@ class Insertion:
             if read.any_soft_clip:
                 self.down_tsd_reads.append(read)
 
-    def get_upstream_boundaries(self):
+    def get_upstream_boundary(self):
         if len(self.upstream_boundaries) == 0:
             return 0
         else:
             return median(self.upstream_boundaries)
 
-    def get_downstream_boundaries(self):
+    def get_downstream_boundary(self):
         if len(self.downstream_boundaries) == 0:
             return 0
         else:
@@ -87,12 +87,12 @@ class Insertion:
     def is_consistent(self, read, distance):
         if self.chrom == read.chrom_1 and self.insertion_strand == read.insertion_strand and read.start_1 < self.last_pos + distance:
             if read.position == "up":
-                if (len(self.upstream_boundaries) == 0 or read.upstream_boundary - self.get_upstream_boundaries() < 6 ) and len(self.down_reads) == 0:
+                if (len(self.upstream_boundaries) == 0 or read.upstream_boundary - self.get_upstream_boundary() < 6 ) and len(self.down_reads) == 0:
                     return True
                 else:
                     return False
             elif read.downstream_boundary - max(self.upstream_limit, self.downstream_limit) > -12:
-                if len(self.downstream_boundaries) == 0 or read.downstream_boundary - self.get_downstream_boundaries() < 6:
+                if len(self.downstream_boundaries) == 0 or read.downstream_boundary - self.get_downstream_boundary() < 6:
                     return True
                 else:
                     return False
