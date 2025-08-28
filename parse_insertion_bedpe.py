@@ -1,16 +1,16 @@
 import os
 import argparse
 import re
-from statistics import median
-
+# from statistics import median
+# from functools import reduce
 
 class Read:
     def __init__(self, line):
-        self.line = line
+        self.line = line.strip()
         self.dissect_line()
 
     def dissect_line(self):
-        fields = self.line.strip().split()
+        fields = self.line.split()
         self.chrom_1, start_1, end_1, self.chrom_2, start_2, end_2, self.name, self.strand_1, self.strand_2, self.cigar_1, self.cigar_2 = fields[:11]
         self.start_1, self.end_1, self.start_2, self.end_2= map(int, [start_1, end_1, start_2, end_2])
         self.insertion_strand = "-" if self.strand_1 == self.strand_2 else '+'
@@ -24,6 +24,8 @@ class Read:
         self.soft_clip_2 = True if re.search(r'(\d+)S', self.cigar_2) else False
         self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
 
+    def print(self):
+        return self.line
 
 class Insertion:
     def __init__(self):
@@ -31,17 +33,11 @@ class Insertion:
         self.insertion_strand = ''
         self.up_reads = []
         self.down_reads = []
-        self.up_tsd_reads = []
-        self.down_tsd_reads = []
-        self.up_limit = int()  # the insertion site must be larger than the upstream limit.
-        self.down_limit = int()  # the insertion site must be smaller than the downstream limit.
-        self.up_edgies = []  # the list of all upstream boundary from all softclipped reads.
-        self.down_edgies = []  # the list of all downstream boundary from all softclipped reads.
-        self.soft_clipped_reads = []
         self.last_pos = int()
-        self.up_softclip = False
-        self.down_softclip = False
-
+        self.at_up_edge = False
+        self.at_down_edge = False
+        self.up_tsd = False
+        self.down_tsd = False
 
     def add_read(self, read):
         self.chrom = read.chrom_1
@@ -50,44 +46,153 @@ class Insertion:
         
         if read.position == "up":
             self.up_reads.append(read)
-            self.up_softclip = self.up_softclip and read.soft_clip_1
-            self.up_limit = max(self.up_limit, read.up_edge)
-            if read.soft_clip_1:
-                self.up_edgies.append(read.up_edge)
+            # if read.soft_clip_1:
+            #     self.up_edgies_softclip.append(read.up_edge)
+            # self.up_softclip = self.up_softclip and read.soft_clip_1
+            # self.up_limit = max(self.up_limit, read.up_edge)
+            # if read.soft_clip_1:
+            #     self.up_edgies.append(read.up_edge)
             if read.any_soft_clip:
-                self.up_tsd_reads.append(read)
+                self.up_tsd = True
 
         if read.position == "down":
             self.down_reads.append(read)
-            self.down_softclip = self.down_softclip and read.soft_clip_1
-            if self.down_limit == 0:
-                self.down_limit = read.down_edge
-            else:
-                self.down_limit = min(self.down_limit, read.down_edge)
-            if read.soft_clip_1:
-                self.down_edgies.append(read.down_edge)
+            # self.down_softclip = self.down_softclip and read.soft_clip_1
+            # if self.down_limit == 0:
+            #     self.down_limit = read.down_edge
+            # else:
+            #     self.down_limit = min(self.down_limit, read.down_edge)
+            # if read.soft_clip_1:
+            #     self.down_edgies.append(read.down_edge)
             if read.any_soft_clip:
-                self.down_tsd_reads.append(read)
+                self.down_tsd = True
 
-    def resolve_insertion_site(self):
-        pass
+    def resolve_insertion_site(self, tsd = 4, wiggle_distance = 20):
+        for read in self.up_reads:
+            conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.up_edge + wiggle_distance])
+            conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.up_edge - tsd - wiggle_distance])
+            conflict_num = conflict_up_num + conflict_down_num
+            read.edge_score = conflict_num # the number of other reads conflict with it being at the edge. The low the better.
 
-    def get_up_edge(self):
-        if len(self.up_edgies) == 0:
-            return 0
+        for read in self.down_reads:
+            conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.down_edge + tsd + wiggle_distance])
+            conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.down_edge - wiggle_distance])
+            conflict_num = conflict_up_num + conflict_down_num
+            read.edge_score = conflict_num # the number of other reads conflict with it being at the edge. The low the better.
+        if len(self.up_reads) > 0:
+            self.min_up_score = min([read.edge_score for read in self.up_reads])
+        if len(self.down_reads) > 0:
+            self.min_down_score = min([read.edge_score for read in self.down_reads])
+
+        # label closest, at_edge, and inconsistent on all reads,
+        # label upstream and downstream closest position and whether the edge is soft clipped on the insertion.
+        up_closest_all = []
+        down_closest_all = []
+        for read in self.up_reads:
+            if read.edge_score == self.min_up_score:
+                read.closest = True
+                up_closest_all.append(read.up_edge)
+                if read.soft_clip_1:
+                    read.at_edge = True
+                    self.at_up_edge = True
+        for read in self.down_reads:
+            if read.edge_score == self.min_down_score:
+                read.closest = True
+                down_closest_all.append(read.down_edge)
+                for i in self.up_reads:
+                    if i.up_edge > read.down_edge + tsd + wiggle_distance:
+                        i.inconsistent = True
+                for i in self.down_reads:
+                    if i.down_edge < read.down_edge - wiggle_distance:
+                        i.inconsistent = True
+                if read.soft_clip_1:
+                    read.at_edge = True
+                    self.at_down_edge = True
+        self.up_closest = max(up_closest_all) if len(up_closest_all) > 0 else 0
+        self.down_closest = min(down_closest_all) if len(down_closest_all) > 0 else 0
+        for read in self.up_reads:
+            if read.up_edge > self.up_closest + wiggle_distance:
+                read.inconsistent = True
+        for read in self.down_reads:
+            if read.down_edge < self.down_closest - wiggle_distance:
+                read.inconsistent = True
+
+    def find_secondary_up_insertion(self, tsd = 4, wiggle_distance = 20):
+        if len(self.get_inconsistent_up_reads()) > 2:
+            # If there are more than 2 inconsistent reads, we can try to find a secondary insertion
+            new_insertion = Insertion()
+            for read in self.get_inconsistent_up_reads():
+                try:
+                    self.up_reads.remove(read)
+                except ValueError:
+                    raise ValueError("Downstream read not found in the list up_reads")
+                new_insertion.add_read(read)
+            # find all reads from the old insertion that is compatible with the new one
+            new_insertion.resolve_insertion_site()
+            separate_reads = [read for read in self.down_reads if read.down_edge > new_insertion.up_closest - tsd - wiggle_distance]
+            for read in separate_reads:
+                try:
+                    self.down_reads.remove(read)
+                except ValueError:
+                    raise ValueError("Downstream read not found in the list down_reads")
+                new_insertion.add_read(read)
+            new_insertion.resolve_insertion_site()
+            self.resolve_insertion_site()
+            return new_insertion
+
+    def find_secondary_down_insertion(self, tsd = 4, wiggle_distance = 20):
+        if len(self.get_inconsistent_down_reads()) > 2:
+            # If there are more than 2 inconsistent reads, we can try to find a secondary insertion
+            new_insertion = Insertion()
+            for read in self.get_inconsistent_down_reads():
+                try:
+                    self.down_reads.remove(read)
+                except ValueError:
+                    raise ValueError("Downstream read not found in the list down_reads")
+                new_insertion.add_read(read)
+            # find all reads from the old insertion that is compatible with the new one
+            new_insertion.resolve_insertion_site()
+            separate_reads = [read for read in self.up_reads if read.up_edge < new_insertion.down_closest + tsd + wiggle_distance]
+            for read in separate_reads:
+                try:
+                    self.up_reads.remove(read)
+                except ValueError:
+                    raise ValueError("Upstream read not found in the list up_reads")
+                new_insertion.add_read(read)
+            new_insertion.resolve_insertion_site()
+            self.resolve_insertion_site()
+            return new_insertion
+
+    def print_sum(self):
+        start = self.up_closest if self.at_up_edge else f">{self.up_closest}"
+        end = self.down_closest if self.at_down_edge else f"<{self.down_closest}"
+        tsd = "possible_TSD" if self.up_tsd and self.down_tsd else "no_TSD"
+        inconsistent = self.get_inconsistent_up_reads() + self.get_inconsistent_down_reads()
+        sum_line = f"{self.chrom}\t{start}\t{end}\t{self.insertion_strand}\t{self.get_read_number()}\t{len(inconsistent)}\t{tsd}\n"
+        return sum_line
+
+    def print_reads(self, option):  # option can be "all", "consistent", "inconsistent"
+        if option == "all":
+            reads = self.up_reads + self.down_reads
+        elif option == "consistent":
+            reads = [read for read in self.up_reads + self.down_reads if not (hasattr(read, 'inconsistent') and read.inconsistent)]
+        elif option == "inconsistent":
+            reads = [read for read in self.up_reads + self.down_reads if hasattr(read, 'inconsistent') and read.inconsistent]
         else:
-            return median(self.up_edgies)
+            raise ValueError(f"Unknown option: {option}")
 
-    def get_down_edge(self):
-        if len(self.down_edgies) == 0:
-            return 0
-        else:
-            return median(self.down_edgies)
+        return "\n".join([read.print() for read in reads]) + "\n" if len(reads) > 0 else None
+
+    def get_inconsistent_up_reads(self):
+        return [read for read in self.up_reads if hasattr(read, 'inconsistent') and read.inconsistent]
+
+    def get_inconsistent_down_reads(self):
+        return [read for read in self.down_reads if hasattr(read, 'inconsistent') and read.inconsistent]
 
     def get_read_number(self):
         return len(self.up_reads) + len(self.down_reads)
 
-    def is_consistent(self, read, distance):
+    def within_range(self, read, distance):
         if self.chrom == read.chrom_1 and self.insertion_strand == read.insertion_strand and read.start_1 < self.last_pos + distance:
             return True
         else:
@@ -116,103 +221,34 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
                 continue
 
             read = Read(line)
-            if len(insertions)> 0 and insertions[-1].is_consistent(read, distance):
+            if len(insertions)> 0 and insertions[-1].within_range(read, distance):
                 insertions[-1].add_read(read)
             else:
                 insertion = Insertion()
                 insertion.add_read(read)
                 insertions.append(insertion)
-    for insertion in insertions:
-        insertion.resolve_insertion_site()
-
-    # Now print the insertion to a file:
-    consistent_insertions = []
-    tbd_insertions = []
+    print(f"Total initial insertions: {len(insertions)}")
+    new_insertions = []
     for index, insertion in enumerate(insertions):
-        if insertion.get_read_number() < 3:
-            continue
-        if index == 0:
-            if close_insertions(insertion, insertions[index + 1], distance):
-               tbd_insertions.append(insertion)
-            else:
-                consistent_insertions.append(insertion)
-        elif index == len(insertions) - 1:
-            if close_insertions(insertion, insertions[index - 1], distance):
-                tbd_insertions.append(insertion)
-            else:
-                consistent_insertions.append(insertion)
-        else:
-            if close_insertions(insertion, insertions[index - 1], distance) or close_insertions(insertion, insertions[index + 1], distance):
-                tbd_insertions.append(insertion)
-            else:
-                consistent_insertions.append(insertion)
+        insertion.resolve_insertion_site()
+        if len(insertion.get_inconsistent_up_reads()) > 2:
+            new_insertion = insertion.find_secondary_up_insertion()
+            new_insertions.append(new_insertion)
+        if len(insertion.get_inconsistent_down_reads()) > 2:
+            new_insertion = insertion.find_secondary_down_insertion()
+            new_insertions.append(new_insertion)
 
+    insertions.extend(new_insertions)
+    print(f"Total initial insertions: {len(insertions)}")
     with open(out, 'w') as f:
-        for insertion in consistent_insertions:
-            total_reads = insertion.get_read_number()
-            start = insertion.get_up_edge() if insertion.get_up_edge() > 0 else f">{insertion.up_limit}"
-            end = insertion.get_down_edge() if insertion.get_down_edge() > 0 else f"<{insertion.down_limit}"
-            sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
+        for insertion in insertions:
+            sum_line = insertion.print_sum()
             f.write(sum_line)
-
+    
     with open(failed, 'w') as f:
-        for insertion in tbd_insertions:
-            total_reads = insertion.get_read_number()
-            start = insertion.get_up_edge() if insertion.get_up_edge() > 0 else f">{insertion.up_limit}"
-            end = insertion.get_down_edge() if insertion.get_down_edge() > 0 else f"<{insertion.down_limit}"
-            sum_line = f"{insertion.chrom}\t{start}\t{end}\t{insertion.insertion_strand}\t{total_reads}\n"
-            f.write(sum_line)
-
-            # if chrom_1 == curr_chr and start_1 < int(curr_pos) + distance:
-            #     # existing insertion
-            #     curr_pos = end_1
-            #     line_insertion = "-" if strand_1 == strand_2 else '+'
-            #     curr_num_reads += 1
-            #     if strand_1 == '+' and (re.search(r'(\d+)S', cigar_1) or re.search(r'(\d+)S', cigar_2)):
-            #         curr_left_softclip.append(line.strip())
-            #     if strand_1 == '-' and (re.search(r'(\d+)S', cigar_1) or re.search(r'(\d+)S', cigar_2)):
-            #         curr_right_softclip.append(line.strip())
-            #     if (curr_strand == "-" and strand_1 == '+') or (line_insertion != insertion_strand):
-            #         inconsistent_read += 1
-            #         failed_list.append(line.strip())
-            #         # next try to report inconsistent reads per insertion.
-            #     else:
-            #         insertion_strand = line_insertion
-            #         curr_strand = strand_1
-            #         consistent_read += 1
-            # else:
-            #     # new insertion
-            #     if len(curr_left_softclip) > 0 and len(curr_right_softclip) > 0:
-            #         # report soft-clipped reads
-            #         tsd_list.extend(curr_left_softclip + curr_right_softclip)
-            #     curr_left_softclip = []
-            #     curr_right_softclip = []
-            #     if strand_1 == '+' and (re.search(r'(\d+)S', cigar_1) or re.search(r'(\d+)S', cigar_2)):
-            #         curr_left_softclip.append(line.strip())
-            #     if strand_1 == '-' and (re.search(r'(\d+)S', cigar_1) or re.search(r'(\d+)S', cigar_2)):
-            #         curr_right_softclip.append(line.strip())
-            #     curr_chr = chrom_1
-            #     curr_pos = end_1
-            #     insertion_strand = "-" if strand_1 == strand_2 else '+'
-            #     curr_strand = strand_1
-            #     insertion_number += 1 if curr_num_reads > 1 else 0
-            #     curr_num_reads = 1
-
-        # if len(curr_left_softclip) > 0 and len(curr_right_softclip) > 0:
-        #     # report soft-clipped reads
-        #     tsd_list.append(curr_left_softclip + curr_right_softclip)
-        # insertion_number += 1 if curr_num_reads > 1 else 0
-
-    # with open(out, 'w') as f:
-    #     f.write(f"{insertion_number}\t{consistent_read}\t{inconsistent_read}\n")
-    # if failed:
-    #     with open(failed, 'w') as failed_out:
-    #         for failed_line in failed_list:
-    #             failed_out.write(f"{failed_line}\n")
-    # if tsd:
-    #     with open(tsd, 'w') as tsd_out:
-    #         for tsd_line in tsd_list:
-    #             tsd_out.write(f"{tsd_line}\n")
+        for insertion in insertions:
+            if not insertion.print_reads("inconsistent") == None:
+                f.write(insertion.print_reads("inconsistent"))
 
 
 def main():
