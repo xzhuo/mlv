@@ -1,7 +1,7 @@
 import os
 import argparse
 import re
-# from statistics import median
+from statistics import median
 # from functools import reduce
 
 class Read:
@@ -20,10 +20,10 @@ class Read:
         self.insertion_strand = "-" if self.strand_1 == self.strand_2 else '+'
         if self.strand_1 == '+':
             self.position = "up"
-            self.up_edge = self.end_1 
+            self.edge = self.end_1 
         if self.strand_1 == '-':
             self.position = "down"
-            self.down_edge = self.start_1
+            self.edge = self.start_1
         self.soft_clip_1 = True if re.search(r'(\d+)S', self.cigar_1) else False
         self.soft_clip_2 = True if re.search(r'(\d+)S', self.cigar_2) else False
         self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
@@ -58,11 +58,11 @@ class Insertion:
         if read.position == "up":
             self.up_reads.append(read)
             # if read.soft_clip_1:
-            #     self.up_edgies_softclip.append(read.up_edge)
+            #     self.up_edgies_softclip.append(read.edge)
             # self.up_softclip = self.up_softclip and read.soft_clip_1
-            # self.up_limit = max(self.up_limit, read.up_edge)
+            # self.up_limit = max(self.up_limit, read.edge)
             # if read.soft_clip_1:
-            #     self.up_edgies.append(read.up_edge)
+            #     self.up_edgies.append(read.edge)
             if read.any_soft_clip:
                 self.up_tsd = True
 
@@ -70,62 +70,63 @@ class Insertion:
             self.down_reads.append(read)
             # self.down_softclip = self.down_softclip and read.soft_clip_1
             # if self.down_limit == 0:
-            #     self.down_limit = read.down_edge
+            #     self.down_limit = read.edge
             # else:
-            #     self.down_limit = min(self.down_limit, read.down_edge)
+            #     self.down_limit = min(self.down_limit, read.edge)
             # if read.soft_clip_1:
-            #     self.down_edgies.append(read.down_edge)
+            #     self.down_edgies.append(read.edge)
             if read.any_soft_clip:
                 self.down_tsd = True
 
     def resolve_insertion_site(self, tsd = 4, wiggle_distance = 20):
         for read in self.up_reads:
-            conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.up_edge + wiggle_distance])
-            conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.up_edge - tsd - wiggle_distance])
+            conflict_up_num = len([i for i in self.up_reads if i.edge > read.edge + wiggle_distance])
+            conflict_down_num = len([i for i in self.down_reads if i.edge < read.edge - tsd - wiggle_distance])
             conflict_num = conflict_up_num + conflict_down_num
             read.edge_score = 100 / (conflict_num + 1) # Convert the number of other reads conflict with it being at the edge to a score. 100 / (conflict_num + 1)
 
         for read in self.down_reads:
-            conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.down_edge + tsd + wiggle_distance])
-            conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.down_edge - wiggle_distance])
+            conflict_up_num = len([i for i in self.up_reads if i.edge > read.edge + tsd + wiggle_distance])
+            conflict_down_num = len([i for i in self.down_reads if i.edge < read.edge - wiggle_distance])
             conflict_num = conflict_up_num + conflict_down_num
             read.edge_score = 100 / (conflict_num + 1) # Convert the number of other reads conflict with it being at the edge to a score. 100 / (conflict_num + 1)
-        if len(self.up_reads) > 0:
-            self.max_up_score = max([read.edge_score for read in self.up_reads])
-        if len(self.down_reads) > 0:
-            self.max_down_score = max([read.edge_score for read in self.down_reads])
+        if len(self.up_reads + self.down_reads) > 0:
+            self.max_score = max([read.edge_score for read in self.up_reads + self.down_reads])
+        # if len(self.down_reads) > 0:
+        #     self.max_down_score = max([read.edge_score for read in self.down_reads])
 
-        # label closest, at_edge, and inconsistent on all reads,
+        # label closest, at_edge on all reads,
         # label upstream and downstream closest position and whether the edge is soft clipped on the insertion.
         up_closest_all = []
         down_closest_all = []
         for read in self.up_reads:
-            if read.edge_score == self.max_up_score:
+            if read.edge_score == self.max_score:
                 read.closest = True
-                up_closest_all.append(read.up_edge)
+                up_closest_all.append(read.edge)
                 if read.soft_clip_1:
                     read.at_edge = True
                     self.at_up_edge = True
         for read in self.down_reads:
-            if read.edge_score == self.max_down_score:
+            if read.edge_score == self.max_score:
                 read.closest = True
-                down_closest_all.append(read.down_edge)
-                for i in self.up_reads:
-                    if i.up_edge > read.down_edge + tsd + wiggle_distance:
-                        i.inconsistent = True
-                for i in self.down_reads:
-                    if i.down_edge < read.down_edge - wiggle_distance:
-                        i.inconsistent = True
+                down_closest_all.append(read.edge)
                 if read.soft_clip_1:
                     read.at_edge = True
                     self.at_down_edge = True
         self.up_closest = max(up_closest_all) if len(up_closest_all) > 0 else 0
-        self.down_closest = min(down_closest_all) if len(down_closest_all) > 0 else 0
+        self.down_closest = min(down_closest_all) if len(down_closest_all) > 0 else self.last_pos
+        self.label_inconsistent_reads(up_pos=self.up_closest, down_pos=self.down_closest, tsd=tsd, wiggle_distance=wiggle_distance)
+
+    def label_inconsistent_reads(self, up_pos, down_pos, tsd=4, wiggle_distance=20):
         for read in self.up_reads:
-            if read.up_edge > self.up_closest + wiggle_distance:
+            if up_pos and read.edge - wiggle_distance > up_pos:
+                read.inconsistent = True
+            if down_pos and read.edge - wiggle_distance > down_pos + tsd:
                 read.inconsistent = True
         for read in self.down_reads:
-            if read.down_edge < self.down_closest - wiggle_distance:
+            if up_pos and read.edge + wiggle_distance < up_pos - tsd:
+                read.inconsistent = True
+            if down_pos and read.edge + wiggle_distance < down_pos:
                 read.inconsistent = True
 
     def reset_scores(self):
@@ -146,10 +147,50 @@ class Insertion:
             read.at_edge = False
             read.inconsistent = False
 
-    def diagnose(self, wiggle_distance = 20):
-        up_softclip_pos = [read.up_edge for read in self.up_reads if read.soft_clip_1]
-        down_softclip_pos = [read.down_edge for read in self.down_reads if read.soft_clip_1]
-        return up_softclip_pos, down_softclip_pos
+    def diagnose(self, tsd = 4, wiggle_distance = 20):
+        up_softclip_pos = [read.edge for read in self.up_reads if read.soft_clip_1]
+        merged_up_edges = merge_pos(up_softclip_pos, wiggle_distance)
+        good_up_edges = [i for i in merged_up_edges if i["count"] > 1]
+        down_softclip_pos = [read.edge for read in self.down_reads if read.soft_clip_1]
+        merged_down_edges = merge_pos(down_softclip_pos, wiggle_distance)
+        good_down_edges = [i for i in merged_down_edges if i["count"] > 1]
+        if len(good_up_edges) == 0 or len(good_down_edges) == 0:
+            pass
+        elif len(good_up_edges) == 1 and len(good_down_edges) == 1:
+            up_edge = good_up_edges[0]['median_pos']
+            down_edge = good_down_edges[0]['median_pos']
+            tsd_distance = abs(down_edge - up_edge)
+            print(f"Found insertion at {self.chrom}:{up_edge}-{down_edge} with high TSD {tsd_distance}")
+            self.reset_scores()
+            self.resolve_insertion_site(tsd=tsd_distance)
+        else:
+            if len(good_up_edges) > 1 or len(good_down_edges) > 1:
+                combined_good_edges = []
+                # directly add up edges first:
+                for edge in good_up_edges:
+                    combined_good_edges.append({"up_pos":edge["median_pos"], "count": edge["count"]})
+                for edge in good_down_edges:
+                    matching_up_edges = [e for e in combined_good_edges if "up_pos" in e and abs(e["up_pos"] - tsd - edge["median_pos"]) < wiggle_distance]
+                    if len(matching_up_edges) == 1:
+                        for match in matching_up_edges:
+                            match["down_pos"] = edge["median_pos"]
+                            match["count"] += edge["count"]
+                    elif len(matching_up_edges) == 0:
+                        combined_good_edges.append({"down_pos":edge["median_pos"], "count": edge["count"]})
+                    else:
+                        raise ValueError("More than one matching up edges found for a down edge!")
+                sorted_combined_good_edges = sorted(combined_good_edges, key=lambda i: i['count'], reverse=True)
+                self.reset_scores()
+                best_edge = sorted_combined_good_edges[0]
+                up_pos = best_edge.get("up_pos") if best_edge.get("up_pos") else None
+                down_pos = best_edge.get("down_pos") if best_edge.get("down_pos") else None
+                self.label_inconsistent_reads(up_pos=up_pos, down_pos=down_pos)
+                new_insertions = []
+                if len(self.get_inconsistent_up_reads()) > 2:
+                    new_insertions.append(self.find_secondary_up_insertion())
+                if len(self.get_inconsistent_down_reads()) > 2:
+                    new_insertions.append(self.find_secondary_down_insertion())
+                return new_insertions
 
     def find_secondary_up_insertion(self, tsd = 4, wiggle_distance = 20):
         if len(self.get_inconsistent_up_reads()) > 2:
@@ -163,7 +204,7 @@ class Insertion:
                 new_insertion.add_read(read)
             # find all reads from the old insertion that is compatible with the new one
             new_insertion.resolve_insertion_site()
-            separate_reads = [read for read in self.down_reads if read.down_edge > new_insertion.up_closest - tsd - wiggle_distance]
+            separate_reads = [read for read in self.down_reads if read.edge > new_insertion.up_closest - tsd - wiggle_distance]
             for read in separate_reads:
                 try:
                     self.down_reads.remove(read)
@@ -186,7 +227,7 @@ class Insertion:
                 new_insertion.add_read(read)
             # find all reads from the old insertion that is compatible with the new one
             new_insertion.resolve_insertion_site()
-            separate_reads = [read for read in self.up_reads if read.up_edge < new_insertion.down_closest + tsd + wiggle_distance]
+            separate_reads = [read for read in self.up_reads if read.edge < new_insertion.down_closest + tsd + wiggle_distance]
             for read in separate_reads:
                 try:
                     self.up_reads.remove(read)
@@ -233,6 +274,22 @@ class Insertion:
             return False
 
 
+def merge_pos(list, wiggle_distance): # input is a list of integers.
+    list.sort()
+    merged = [] # a list of dicts of {"pos_list": [pos], "count": count}
+    for item in list:
+        if not merged:
+            merged.append({"pos_list": [item], "count": 1})
+        else:
+            if abs(merged[-1]["pos_list"][-1] - item) < wiggle_distance:
+                merged[-1]["pos_list"].append(item)
+                merged[-1]["count"] += 1
+            else:
+                merged.append({"pos_list": [item], "count": 1})
+    for i in merged:
+        i["median_pos"] = int(median(i["pos_list"]))
+    return merged
+
 def close_insertions(insertion1, insertion2, distance):
     if insertion1.chrom == insertion2.chrom and abs(insertion1.last_pos - insertion2.last_pos) < distance:
         return True
@@ -265,12 +322,20 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     new_insertions = []
     for insertion in insertions:
         insertion.resolve_insertion_site()
+        # if insertion.last_pos == 2551304:
+        #     breakpoint()
         if len(insertion.get_inconsistent_up_reads()) > 2:
-            new_insertion = insertion.find_secondary_up_insertion()
-            new_insertions.append(new_insertion)
+            # insertion.reset_scores()
+            new_insertion_list = insertion.diagnose()
+            if new_insertion_list:
+                new_insertions.extend(new_insertion_list)
         if len(insertion.get_inconsistent_down_reads()) > 2:
-            new_insertion = insertion.find_secondary_down_insertion()
-            new_insertions.append(new_insertion)
+            # insertion.reset_scores()
+            new_insertion_list = insertion.diagnose()
+            if new_insertion_list:
+                new_insertions.extend(new_insertion_list)
+            # new_insertion = insertion.find_secondary_down_insertion()
+            # new_insertions.append(new_insertion)
 
     insertions.extend(new_insertions)
     print(f"Total initial insertions: {len(insertions)}")
