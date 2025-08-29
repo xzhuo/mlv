@@ -8,6 +8,10 @@ class Read:
     def __init__(self, line):
         self.line = line.strip()
         self.dissect_line()
+        self.edge_score = int()
+        self.closest = False
+        self.at_edge = False
+        self.inconsistent = False
 
     def dissect_line(self):
         fields = self.line.split()
@@ -38,6 +42,13 @@ class Insertion:
         self.at_down_edge = False
         self.up_tsd = False
         self.down_tsd = False
+        self.max_up_score = int()
+        self.max_down_score = int()
+        self.at_up_edge = False
+        self.at_down_edge = False
+        self.up_closest = int()
+        self.down_closest = int()
+
 
     def add_read(self, read):
         self.chrom = read.chrom_1
@@ -72,31 +83,31 @@ class Insertion:
             conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.up_edge + wiggle_distance])
             conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.up_edge - tsd - wiggle_distance])
             conflict_num = conflict_up_num + conflict_down_num
-            read.edge_score = conflict_num # the number of other reads conflict with it being at the edge. The low the better.
+            read.edge_score = 100 / (conflict_num + 1) # Convert the number of other reads conflict with it being at the edge to a score. 100 / (conflict_num + 1)
 
         for read in self.down_reads:
             conflict_up_num = len([i for i in self.up_reads if i.up_edge > read.down_edge + tsd + wiggle_distance])
             conflict_down_num = len([i for i in self.down_reads if i.down_edge < read.down_edge - wiggle_distance])
             conflict_num = conflict_up_num + conflict_down_num
-            read.edge_score = conflict_num # the number of other reads conflict with it being at the edge. The low the better.
+            read.edge_score = 100 / (conflict_num + 1) # Convert the number of other reads conflict with it being at the edge to a score. 100 / (conflict_num + 1)
         if len(self.up_reads) > 0:
-            self.min_up_score = min([read.edge_score for read in self.up_reads])
+            self.max_up_score = max([read.edge_score for read in self.up_reads])
         if len(self.down_reads) > 0:
-            self.min_down_score = min([read.edge_score for read in self.down_reads])
+            self.max_down_score = max([read.edge_score for read in self.down_reads])
 
         # label closest, at_edge, and inconsistent on all reads,
         # label upstream and downstream closest position and whether the edge is soft clipped on the insertion.
         up_closest_all = []
         down_closest_all = []
         for read in self.up_reads:
-            if read.edge_score == self.min_up_score:
+            if read.edge_score == self.max_up_score:
                 read.closest = True
                 up_closest_all.append(read.up_edge)
                 if read.soft_clip_1:
                     read.at_edge = True
                     self.at_up_edge = True
         for read in self.down_reads:
-            if read.edge_score == self.min_down_score:
+            if read.edge_score == self.max_down_score:
                 read.closest = True
                 down_closest_all.append(read.down_edge)
                 for i in self.up_reads:
@@ -116,6 +127,29 @@ class Insertion:
         for read in self.down_reads:
             if read.down_edge < self.down_closest - wiggle_distance:
                 read.inconsistent = True
+
+    def reset_scores(self):
+        self.max_up_score = 0
+        self.max_down_score = 0
+        self.min_up_score = 0
+        self.min_down_score = 0
+        self.up_closest = 0
+        self.down_closest = 0
+        for read in self.up_reads:
+            read.edge_score = 0
+            read.closest = False
+            read.at_edge = False
+            read.inconsistent = False
+        for read in self.down_reads:
+            read.edge_score = 0
+            read.closest = False
+            read.at_edge = False
+            read.inconsistent = False
+
+    def diagnose(self, wiggle_distance = 20):
+        up_softclip_pos = [read.up_edge for read in self.up_reads if read.soft_clip_1]
+        down_softclip_pos = [read.down_edge for read in self.down_reads if read.soft_clip_1]
+        return up_softclip_pos, down_softclip_pos
 
     def find_secondary_up_insertion(self, tsd = 4, wiggle_distance = 20):
         if len(self.get_inconsistent_up_reads()) > 2:
@@ -229,7 +263,7 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
                 insertions.append(insertion)
     print(f"Total initial insertions: {len(insertions)}")
     new_insertions = []
-    for index, insertion in enumerate(insertions):
+    for insertion in insertions:
         insertion.resolve_insertion_site()
         if len(insertion.get_inconsistent_up_reads()) > 2:
             new_insertion = insertion.find_secondary_up_insertion()
