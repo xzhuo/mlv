@@ -118,6 +118,7 @@ class Insertion:
         self.label_inconsistent_reads(up_pos=self.up_closest, down_pos=self.down_closest, tsd=tsd, wiggle_distance=wiggle_distance)
 
     def label_inconsistent_reads(self, up_pos, down_pos, tsd=4, wiggle_distance=20):
+        self.reset_inconsistent()
         for read in self.up_reads:
             if up_pos and read.edge - wiggle_distance > up_pos:
                 read.inconsistent = True
@@ -128,6 +129,12 @@ class Insertion:
                 read.inconsistent = True
             if down_pos and read.edge + wiggle_distance < down_pos:
                 read.inconsistent = True
+
+    def reset_inconsistent(self):
+        for read in self.up_reads:
+            read.inconsistent = False
+        for read in self.down_reads:
+            read.inconsistent = False
 
     def reset_scores(self):
         self.max_up_score = 0
@@ -165,31 +172,23 @@ class Insertion:
             self.resolve_insertion_site(tsd=tsd_distance)
         else:
             if len(good_up_edges) > 1 or len(good_down_edges) > 1:
-                combined_good_edges = []
-                # directly add up edges first:
-                for edge in good_up_edges:
-                    combined_good_edges.append({"up_pos":edge["median_pos"], "count": edge["count"]})
-                for edge in good_down_edges:
-                    matching_up_edges = [e for e in combined_good_edges if "up_pos" in e and abs(e["up_pos"] - tsd - edge["median_pos"]) < wiggle_distance]
-                    if len(matching_up_edges) == 1:
-                        for match in matching_up_edges:
-                            match["down_pos"] = edge["median_pos"]
-                            match["count"] += edge["count"]
-                    elif len(matching_up_edges) == 0:
-                        combined_good_edges.append({"down_pos":edge["median_pos"], "count": edge["count"]})
-                    else:
-                        raise ValueError("More than one matching up edges found for a down edge!")
-                sorted_combined_good_edges = sorted(combined_good_edges, key=lambda i: i['count'], reverse=True)
-                self.reset_scores()
-                best_edge = sorted_combined_good_edges[0]
-                up_pos = best_edge.get("up_pos") if best_edge.get("up_pos") else None
-                down_pos = best_edge.get("down_pos") if best_edge.get("down_pos") else None
-                self.label_inconsistent_reads(up_pos=up_pos, down_pos=down_pos)
-                new_insertions = []
-                if len(self.get_inconsistent_up_reads()) > 2:
-                    new_insertions.append(self.find_secondary_up_insertion())
-                if len(self.get_inconsistent_down_reads()) > 2:
-                    new_insertions.append(self.find_secondary_down_insertion())
+                # since the wiggle_distance is far larger than the tsd, directly compare upstream and downstream edges by merging:
+                merged_combined_edges = merge_pos([u["median_pos"] for u in good_up_edges] + [d["median_pos"] for d in good_down_edges], wiggle_distance = 20)
+                # Now we can find good edges that are supported by both up and down reads
+                good_edges_up_down = [c for c in merged_combined_edges if c["count"] > 1]
+                if len(good_edges_up_down) > 0:
+                    sorted_combined_good_edges = sorted(good_edges_up_down, key=lambda i: i['count'], reverse=True)
+                    self.reset_scores()
+                    best_edge = sorted_combined_good_edges[0]
+                    # upstream edge should be the second position.
+                    up_pos = best_edge['pos_list'][1] if best_edge['pos_list'] else None
+                    down_pos = best_edge['pos_list'][0] if best_edge['pos_list'] else None
+                    self.label_inconsistent_reads(up_pos=up_pos, down_pos=down_pos)
+                    new_insertions = []
+                    if len(self.get_inconsistent_up_reads()) > 2:
+                        new_insertions.append(self.find_secondary_up_insertion())
+                    if len(self.get_inconsistent_down_reads()) > 2:
+                        new_insertions.append(self.find_secondary_down_insertion())
                 return new_insertions
 
     def find_secondary_up_insertion(self, tsd = 4, wiggle_distance = 20):
@@ -276,7 +275,7 @@ class Insertion:
 
 def merge_pos(list, wiggle_distance): # input is a list of integers.
     list.sort()
-    merged = [] # a list of dicts of {"pos_list": [pos], "count": count}
+    merged = [] # a list of dicts of {"pos_list": [pos], "count": count, "median_pos": median_pos}
     for item in list:
         if not merged:
             merged.append({"pos_list": [item], "count": 1})
