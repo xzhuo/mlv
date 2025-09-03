@@ -11,7 +11,7 @@ def extract_softclip(bam_file, out, failed, extend):
         with open(failed, 'w') as failed_outfile:
             # Iterate through each read in the BAM file 
             for read in bam:
-                if read.is_supplementary or read.is_secondary or read.is_unmapped:
+                if read.is_supplementary or read.is_duplicate or read.is_secondary or read.is_unmapped:
                     continue
                 else:
                     if (read.is_reverse and read.query_alignment_start > 0) or (read.is_forward and read.query_alignment_end < read.query_length):
