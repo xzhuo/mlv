@@ -245,7 +245,7 @@ class Insertion:
         sum_line = f"{self.chrom}\t{start}\t{end}\t{self.insertion_strand}\t{self.get_read_number()}\t{len(inconsistent)}\t{tsd}\n"
         return sum_line
 
-    def print_reads(self, option):  # option can be "all", "consistent", "inconsistent"
+    def print_reads(self, option = "all"):  # option can be "all", "consistent", "inconsistent"
         if option == "all":
             reads = self.up_reads + self.down_reads
         elif option == "consistent":
@@ -337,16 +337,19 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
             # new_insertions.append(new_insertion)
 
     insertions.extend(new_insertions)
+    insertions.sort(key=lambda x: (x.chrom, x.last_pos))
     print(f"Total initial insertions: {len(insertions)}")
     with open(out, 'w') as f:
         for insertion in insertions:
             sum_line = insertion.print_sum()
             f.write(sum_line)
     
-    with open(failed, 'w') as f:
+    with open(tsd, 'w') as f:
         for insertion in insertions:
-            if not insertion.print_reads("inconsistent") == None:
-                f.write(insertion.print_reads("inconsistent"))
+            if insertion.up_tsd and insertion.down_tsd:
+                sum_line = insertion.print_sum()
+                bedpe = insertion.print_reads("all")
+                f.write(f"# {sum_line}{bedpe}\n")
 
 
 def main():
