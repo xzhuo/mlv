@@ -18,12 +18,14 @@ class Read:
         self.chrom_1, start_1, end_1, self.chrom_2, start_2, end_2, self.name, self.strand_1, self.strand_2, self.cigar_1, self.cigar_2 = fields[:11]
         self.start_1, self.end_1, self.start_2, self.end_2= map(int, [start_1, end_1, start_2, end_2])
         self.insertion_strand = "-" if self.strand_1 == self.strand_2 else '+'
+        # self.strand_2 is the virus strand, not the mouse strand.
         if self.strand_1 == '+':
             self.position = "up"
-            self.edge = self.end_1 
+            self.edge = self.end_1
         if self.strand_1 == '-':
             self.position = "down"
             self.edge = self.start_1
+        # did not filter out 5' soft clip, since we don't have the mapping strand on mouse in the bedpe file.
         self.soft_clip_1 = True if re.search(r'(\d+)S', self.cigar_1) else False
         self.soft_clip_2 = True if re.search(r'(\d+)S', self.cigar_2) else False
         self.any_soft_clip = self.soft_clip_1 or self.soft_clip_2
