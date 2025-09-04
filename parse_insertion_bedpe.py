@@ -191,7 +191,7 @@ class Insertion:
                         new_insertions.append(self.find_secondary_up_insertion())
                     if len(self.get_inconsistent_down_reads()) > 2:
                         new_insertions.append(self.find_secondary_down_insertion())
-                return new_insertions
+                    return new_insertions
 
     def find_secondary_up_insertion(self, tsd = 4, wiggle_distance = 20):
         if len(self.get_inconsistent_up_reads()) > 2:
