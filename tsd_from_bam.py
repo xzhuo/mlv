@@ -27,7 +27,11 @@ def extract_tsd(bam_file, input_file, out):
             if bedpe_line.position == "up":
                 if bedpe_line.soft_clip_1:
                     cigar = bedpe_line.cigar_1
-                    boundary_seq = Seq(read.query_sequence)[read.query_alignment_end - 10:read.query_alignment_end + 10]
+                    boundary_start = read.query_alignment_end - 10 if read.query_alignment_end - 10 > 0 else 0
+                    gap_start = "" if read.query_alignment_end - 10 > 0 else "-" * (10 - read.query_alignment_end)
+                    boundary_end = read.query_alignment_end + 10 if read.query_alignment_end + 10 < read.query_length else read.query_length
+                    gap_end = "" if read.query_alignment_end + 10 < read.query_length else "-" * (10 - (read.query_length - read.query_alignment_end))
+                    boundary_seq = gap_start + Seq(read.query_sequence)[boundary_start:boundary_end] + gap_end
                 if bedpe_line.soft_clip_2:
                     cigar = bedpe_line.cigar_2
                     full_read = Seq(read.get_forward_sequence()).reverse_complement()
