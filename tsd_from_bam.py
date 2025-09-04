@@ -5,7 +5,7 @@ import re
 from Bio.Seq import Seq
 from parse_insertion_bedpe import Read
 
-def boundary_subseq(read, direction, revcom = False, distance = 10): # direct has to be up or down.
+def boundary_subseq(read, direction, revcom = False, distance = 20): # direct has to be up or down.
     boundary_subseq = ""
     if direction == "up":
         boundary_start = read.query_alignment_end - distance if read.query_alignment_end - distance > 0 else 0
@@ -53,26 +53,26 @@ def extract_tsd(bam_file, input_file, out):
                 fast_list = []
                 if bedpe_line.position == "up":
                     if bedpe_line.soft_clip_1 and re.search(r'(\d+)S$', bedpe_line.cigar_1):
-                        boundary_seq = boundary_subseq(human_read, "up", False, 10)
+                        boundary_seq = boundary_subseq(human_read, "up", False)
                         fasta = f">{read_id}_+_hg38\n{boundary_seq}"
                         fast_list.append(fasta)
                     if bedpe_line.soft_clip_2:
                         if (mouse_read.is_reverse and re.search(r'^(\d+)S', bedpe_line.cigar_2)) or (mouse_read.is_forward and re.search(r'(\d+)S$', bedpe_line.cigar_2)):
                             direction = "down" if mouse_read.is_reverse else "up"
                             revcom = False if mouse_read.is_reverse else True
-                            boundary_seq = boundary_subseq(mouse_read, direction, revcom, 10)
+                            boundary_seq = boundary_subseq(mouse_read, direction, revcom)
                             fasta = f">{read_id}_+_mm10\n{boundary_seq}"
                             fast_list.append(fasta)
                 elif bedpe_line.position == "down":
                     if bedpe_line.soft_clip_1 and re.search(r'^(\d+)S', bedpe_line.cigar_1):
-                        boundary_seq = boundary_subseq(human_read, "down", False, 10)
+                        boundary_seq = boundary_subseq(human_read, "down", False)
                         fasta = f">{read_id}_-_hg38\n{boundary_seq}"
                         fast_list.append(fasta)
                     if bedpe_line.soft_clip_2:
                         if (mouse_read.is_reverse and re.search(r'^(\d+)S', bedpe_line.cigar_2)) or (mouse_read.is_forward and re.search(r'(\d+)S$', bedpe_line.cigar_2)):
                             direction = "down" if mouse_read.is_reverse else "up"
                             revcom = True if mouse_read.is_reverse else False
-                            boundary_seq = boundary_subseq(mouse_read, direction, revcom, 10)
+                            boundary_seq = boundary_subseq(mouse_read, direction, revcom)
                             fasta = f">{read_id}_-_mm10\n{boundary_seq}"
                             fast_list.append(fasta)
                 else:

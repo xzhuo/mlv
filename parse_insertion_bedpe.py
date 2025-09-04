@@ -323,29 +323,26 @@ def summarize_insertions(bedpe_file, out, failed, tsd, distance):
     new_insertions = []
     for insertion in insertions:
         insertion.resolve_insertion_site()
-        # if insertion.last_pos == 2551304:
-        #     breakpoint()
         if len(insertion.get_inconsistent_up_reads()) > 2:
-            # insertion.reset_scores()
+
             new_insertion_list = insertion.diagnose()
             if new_insertion_list:
                 new_insertions.extend(new_insertion_list)
         if len(insertion.get_inconsistent_down_reads()) > 2:
-            # insertion.reset_scores()
+
             new_insertion_list = insertion.diagnose()
             if new_insertion_list:
                 new_insertions.extend(new_insertion_list)
-            # new_insertion = insertion.find_secondary_down_insertion()
-            # new_insertions.append(new_insertion)
 
     insertions.extend(new_insertions)
     insertions.sort(key=lambda x: (x.chrom, x.last_pos))
     print(f"Total initial insertions: {len(insertions)}")
     with open(out, 'w') as f:
         for insertion in insertions:
-            sum_line = insertion.print_sum()
-            f.write(sum_line)
-    
+            if not (insertion.up_tsd and insertion.down_tsd):
+                sum_line = insertion.print_sum()
+                f.write(sum_line)
+
     with open(tsd, 'w') as f:
         for insertion in insertions:
             if insertion.up_tsd and insertion.down_tsd:
@@ -359,7 +356,7 @@ def main():
     parser.add_argument('-i', '--input', type=str, required=True,
                         help='input bedpe file')
     parser.add_argument('-o', '--out', type=str, required=True,
-                        help='output summery txt file')
+                        help='output summery of no TSD records')
     parser.add_argument('-f', '--failed', type=str, required=False,
                         help='output seq does not match')
     parser.add_argument('-t', '--tsd', type=str, required=False,
