@@ -14,9 +14,14 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                     if line == "":
                         continue
                     elif line.startswith('#'):
+                        if insertion:
+                            insertion[1] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
+                            insertion[2] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                            out.write('\t'.join(insertion) + '\n')
                         line = line.removeprefix('# ')
                         insertion = line.split()
-                        out.write(line + '\n')
+                        insertion_pos = {"+":{}, "-":{}}
+                        # out.write(line + '\n')
                         failed.write(line + '\n')
                     elif line.startswith('>'):
                         line = line.removeprefix('>')
@@ -69,9 +74,18 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                     else:
                                         tsd_pos = "?"
                                 if tsd_pos:
-                                    out.write('\t'.join([read_id, strand, genome, str(tsd_pos)]) + '\n')
+                                    try:
+                                        insertion_pos[read[1]][str(tsd_pos)] += 1
+                                    except KeyError:
+                                        insertion_pos[read[1]][str(tsd_pos)] = 1
+                                    # out.write('\t'.join([read_id, strand, genome, str(tsd_pos)]) + '\n')
                         else:
                             raise ValueError("unexpected error in the line: " + line)
+    
+                if insertion:
+                    insertion[1] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
+                    insertion[2] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                    out.write('\t'.join(insertion) + '\n')
 
 def main():
     parser = argparse.ArgumentParser(description='summarize the manual check results in a fasta file to a table')
