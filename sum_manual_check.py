@@ -70,7 +70,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                         elif strand == "-":
                                             human_clip_length -= offset
                                             supp_human_pos = supp_read.reference_start
-                                            tsd_pos = supp_human_pos + (human_clip_length - supp_read.query_alignment_end)
+                                            tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
                                     else:
                                         tsd_pos = "?"
                                 if tsd_pos:
