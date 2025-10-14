@@ -64,13 +64,15 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                         supp_read = supp_reads.pop()
                                         human_clip_length = mouse_read.query_alignment_start if mouse_read.is_reverse else mouse_read.query_length - mouse_read.query_alignment_end
                                         if strand == "+":
-                                            human_clip_length += offset
+                                            # human_clip_length += offset
                                             supp_human_pos = supp_read.reference_end
-                                            tsd_pos = supp_human_pos + (human_clip_length - (supp_read.query_length - supp_read.query_alignment_start))
+                                            # tsd_pos = supp_human_pos + (human_clip_length - (supp_read.query_length - supp_read.query_alignment_start))
+                                            tsd_pos = supp_human_pos + offset
                                         elif strand == "-":
-                                            human_clip_length -= offset
+                                            # human_clip_length -= offset
                                             supp_human_pos = supp_read.reference_start
-                                            tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
+                                            # tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
+                                            tsd_pos = supp_human_pos + offset
                                     else:
                                         tsd_pos = "?"
                                 if tsd_pos:
