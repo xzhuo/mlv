@@ -63,14 +63,27 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                     if supp_reads:
                                         supp_read = supp_reads.pop()
                                         human_clip_length = mouse_read.query_alignment_start if mouse_read.is_reverse else mouse_read.query_length - mouse_read.query_alignment_end
-                                        if strand == "+":
-                                            human_clip_length += offset
-                                            supp_human_pos = supp_read.reference_end
-                                            tsd_pos = supp_human_pos + (human_clip_length - (supp_read.query_length - supp_read.query_alignment_start))
-                                        elif strand == "-":
-                                            human_clip_length -= offset
+                                        human_clip_length = human_clip_length + offset if strand == "+" else human_clip_length - offset
+                                        mouse_clip_length = supp_read.infer_read_length() - human_clip_length
+                                        mouse_in_supp = supp_read.cigartuples[0][1] if supp_read.is_forward else supp_read.cigartuples[-1][1]
+                                        supp_human_pos = supp_read.reference_start if supp_read.is_forward else supp_read.reference_end
+                                        tsd_pos = supp_human_pos + (mouse_clip_length - mouse_in_supp)
+                                        if supp_read.is_forward:
+                                            mouse_in_supp = supp_read.cigartuples[0][1]
                                             supp_human_pos = supp_read.reference_start
-                                            tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
+                                            tsd_pos = supp_human_pos + (mouse_clip_length - mouse_in_supp)
+                                        else:
+                                            mouse_in_supp = supp_read.cigartuples[-1][1]
+                                            supp_human_pos = supp_read.reference_end
+                                            tsd_pos = supp_human_pos - (mouse_clip_length - mouse_in_supp)
+                                        # if strand == "+":
+                                        #     human_clip_length += offset
+                                        #     supp_human_pos = supp_read.reference_end
+                                        #     tsd_pos = supp_human_pos + (human_clip_length - (supp_read.query_length - supp_read.query_alignment_start))
+                                        # elif strand == "-":
+                                        #     human_clip_length -= offset
+                                        #     supp_human_pos = supp_read.reference_start
+                                        #     tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
                                     else:
                                         tsd_pos = "?"
                                 if tsd_pos:
