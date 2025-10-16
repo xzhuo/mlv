@@ -15,8 +15,14 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                         continue
                     elif line.startswith('#'):
                         if insertion:
-                            insertion[1] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
-                            insertion[2] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                            if len(insertion_pos["-"]) == 1:
+                                insertion[1] = str(list(insertion_pos["-"].keys())[0])
+                            else:
+                                insertion[1] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                            if len(insertion_pos["+"]) == 1:
+                                insertion[2] = str(list(insertion_pos["+"].keys())[0])
+                            else:
+                                insertion[2] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
                             out.write('\t'.join(insertion) + '\n')
                         line = line.removeprefix('# ')
                         insertion = line.split()
@@ -86,7 +92,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                         #     tsd_pos = supp_human_pos - (human_clip_length - supp_read.query_alignment_end)
                                     else:
                                         tsd_pos = "?"
-                                if tsd_pos:
+                                if tsd_pos and tsd_pos != "?":
                                     try:
                                         insertion_pos[read[1]][str(tsd_pos)] += 1
                                     except KeyError:
@@ -96,8 +102,14 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                             raise ValueError("unexpected error in the line: " + line)
     
                 if insertion:
-                    insertion[1] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
-                    insertion[2] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                    if len(insertion_pos["-"]) == 1:
+                        insertion[1] = str(list(insertion_pos["-"].keys())[0])
+                    else:
+                        insertion[1] = str(sorted(insertion_pos["-"].items(), key=lambda item: item[1], reverse=True))
+                    if len(insertion_pos["+"]) == 1:
+                        insertion[2] = str(list(insertion_pos["+"].keys())[0])
+                    else:
+                        insertion[2] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
                     out.write('\t'.join(insertion) + '\n')
 
 def main():
