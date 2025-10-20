@@ -2,11 +2,13 @@ import os
 import argparse
 import pysam
 import re
+from collections import defaultdict
 
 def parse_fa(all_bam_reads, input_file, output_file, failed_file):
     with open(input_file, 'r') as in_put:
         with open(output_file, 'w') as out:
             with open(failed_file, 'w') as failed:
+                all_pos = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
                 insertion = [] # chrom, start, end, strand, read_num, inconsitend_read_num, TSD_annotation
                 read = [] # read ID, strand, genome
                 for line in in_put:
@@ -28,7 +30,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                         insertion = line.split()
                         insertion_pos = {"+":{}, "-":{}}
                         # out.write(line + '\n')
-                        failed.write(line + '\n')
+                        # failed.write(line + '\n')
                     elif line.startswith('>'):
                         line = line.removeprefix('>')
                         read = line.split('_') # SRR21439924.8076885_+_mm10
@@ -36,7 +38,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                         matches = list(re.finditer(r'\|', line))
                         # move on and print the line to a new file with no matches;
                         if len(matches) == 0:
-                            failed.write(line + '\n')
+                            # failed.write(line + '\n')
                         # raise error if there are more than 1 matches;
                         elif len(matches) > 1:
                             raise ValueError("more than 1 matches found in the line: " + line)
@@ -55,6 +57,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                 if genome =="hg38":
                                     bam_reads = [read for read in all_bam_reads.find(read_id) if re.match("GRCh38",read.reference_name) and not (read.is_unmapped or read.is_secondary or read.is_duplicate or read.is_supplementary)]
                                     human_read = bam_reads.pop() # I don't need to check if there are multiple reads since it has been checked in the previous script.
+                                    human_chrom = human_read.reference_name
                                     if strand == "+":
                                         ori_pos = human_read.reference_end
                                         tsd_pos = ori_pos + offset
@@ -73,6 +76,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                         mouse_clip_length = supp_read.infer_read_length() - human_clip_length
                                         mouse_in_supp = supp_read.cigartuples[0][1] if supp_read.is_forward else supp_read.cigartuples[-1][1]
                                         supp_human_pos = supp_read.reference_start if supp_read.is_forward else supp_read.reference_end
+                                        human_chrom = supp_read.reference_name
                                         tsd_pos = supp_human_pos + (mouse_clip_length - mouse_in_supp)
                                         if supp_read.is_forward:
                                             mouse_in_supp = supp_read.cigartuples[0][1]
@@ -94,10 +98,11 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                                         tsd_pos = "?"
                                 if tsd_pos and tsd_pos != "?":
                                     try:
-                                        insertion_pos[read[1]][str(tsd_pos)] += 1
+                                        insertion_pos[strand][str(tsd_pos)] += 1
                                     except KeyError:
-                                        insertion_pos[read[1]][str(tsd_pos)] = 1
+                                        insertion_pos[strand][str(tsd_pos)] = 1
                                     # out.write('\t'.join([read_id, strand, genome, str(tsd_pos)]) + '\n')
+                                    all_pos[human_chrom][strand][str(tsd_pos)] += 1
                         else:
                             raise ValueError("unexpected error in the line: " + line)
     
@@ -111,6 +116,11 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                     else:
                         insertion[2] = str(sorted(insertion_pos["+"].items(), key=lambda item: item[1], reverse=True))
                     out.write('\t'.join(insertion) + '\n')
+                # write all_pos to failed file for debugging
+                for chrom in all_pos:
+                    for strand in all_pos[chrom]:
+                        for pos in all_pos[chrom][strand]:
+                            failed.write(f"{chrom}\t{pos}\t{strand}\t{all_pos[chrom][strand][pos]}\n")
 
 def main():
     parser = argparse.ArgumentParser(description='summarize the manual check results in a fasta file to a table')
