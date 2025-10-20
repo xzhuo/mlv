@@ -39,6 +39,7 @@ def parse_fa(all_bam_reads, input_file, output_file, failed_file):
                         # move on and print the line to a new file with no matches;
                         if len(matches) == 0:
                             # failed.write(line + '\n')
+                            pass
                         # raise error if there are more than 1 matches;
                         elif len(matches) > 1:
                             raise ValueError("more than 1 matches found in the line: " + line)
