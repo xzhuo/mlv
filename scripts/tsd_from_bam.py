@@ -3,7 +3,7 @@ import argparse
 import pysam
 import re
 from Bio.Seq import Seq
-from parse_insertion_bedpe import Read
+from scripts.parse_insertion_bedpe import Read
 
 def boundary_subseq(read, direction, revcom = False, distance = 20): # direct has to be up or down.
     boundary_subseq = ""
