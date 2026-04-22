@@ -1,7 +1,6 @@
 FILES = glob_wildcards('fastq/{sra}_mosaic_dust_1.fastq')
 SRAS = FILES.sra
 
-PICARD = "/opt/apps/picard/2.8.1/picard.jar"
 HG38_MM10 = "/scratch/genomes/hg38_mm10/10xATAC/refdata-cellranger-atac-GRCh38-and-mm10-1.2.0/fasta/genome.fa"
 MM10_RMSK = "/scratch/xzhuo/genomes/mm10/mm10.rmsk.class.lite.bed"
 MLV = "/scratch/xzhuo/xenograft_fq/mlv.mm10.bed"
@@ -11,7 +10,7 @@ IAPEY = "/scratch/xzhuo/genomes/mm10/mm10.IAPEY_LTR.lite.bed"
 LTR5_HS = "/scratch/xzhuo/genomes/hg38/reAnno_hg38.LTR5_Hs.bed"
 MM10_SIZE = "/scratch/genomes/mm10/mm10_lite.size"
 HG38_SIZE = "/scratch/genomes/hg38/hg38_lite.size"
-FISHER_PY = "/scratch/xzhuo/github/mlv/fisher.py"
+FISHER_PY = "scripts/fisher.py"
 
 rule all:
   input:
@@ -51,7 +50,7 @@ rule cat_bam:
   output:
     "all_dedup.bam"
   shell:
-    "ml samtools; samtools cat -o {output} {input}"
+    "samtools cat -o {output} {input}"
 
 rule LTR5_fisher:
   input:
@@ -65,8 +64,8 @@ rule LTR5_fisher:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   shell:
     """
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="LTR5_Hs" > {output.fisher}
+    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
+    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="LTR5_Hs" > {output.fisher}
     """
     # "python3 {FISHER_PY} -m LTR5_Hs -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
@@ -82,8 +81,8 @@ rule IAPEY_fisher:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   shell:
     """
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="IAPEY" > {output.fisher}
+    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
+    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="IAPEY" > {output.fisher}
     """
     # "python3 {FISHER_PY} -m IAPEY -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
@@ -99,8 +98,8 @@ rule RLTR6_fisher:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   shell:
     """
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR6_Mm" > {output.fisher}
+    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
+    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR6_Mm" > {output.fisher}
     """
     # "python3 {FISHER_PY} -m RLTR6_Mm -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
@@ -118,8 +117,8 @@ rule fisher:
   #   "pybedtools"
   shell:
     """
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    /scratch/devtools/xzhuo/miniconda3/envs/pybedtools/bin/bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR4_Mm" > {output.fisher}
+    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
+    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR4_Mm" > {output.fisher}
     """
     # "python3 {FISHER_PY} -m RLTR4_Mm -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
@@ -182,7 +181,7 @@ rule bedpe:
   conda:
     "env/align.yml"
   shell:
-    "ml samtools; samtools view -b -F 0X800 -F 0X400 {input} |samtools collate -O - | bedtools bamtobed -bedpe -i stdin| perl -lane {params.cmd:q} > {output}"
+    "samtools view -b -F 0X800 -F 0X400 {input} |samtools collate -O - | bedtools bamtobed -bedpe -i stdin| perl -lane {params.cmd:q} > {output}"
 
 rule markdup:
   input:
@@ -193,7 +192,7 @@ rule markdup:
   conda:
     "env/align.yml"
   shell:
-    "ml picard; java -jar {PICARD} MarkDuplicates I={input} O={output.bam} M={output.m}"
+    "picard MarkDuplicates -I {input} -O {output.bam} -M {output.m}"
 
 # rule sort_bam:
 #   input:
@@ -201,7 +200,7 @@ rule markdup:
 #   output:
 #     "bam/{sra}_fastp.sort.bam"
 #   shell:
-#     "ml samtools;samtools sort -o {output} {input}"
+#     "samtools sort -o {output} {input}"
 
 rule bwa:
   input:
@@ -213,7 +212,7 @@ rule bwa:
   conda:
     "env/align.yml"
   shell:
-    """ml bwa samtools;bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} | samtools sort -o {output}"""
+    """bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} | samtools sort -o {output}"""
 
 rule fastp:
   input:
