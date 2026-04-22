@@ -2,14 +2,6 @@
 
 source config.sh
 
-SRR=( \
-	DRR349010 \
-	# DRR349011 \
-	# DRR349012 \
- 	# DRR349013 \
- 	# DRR349014 \
- 	# DRR349015 \
-	);
 
 # conda init;
 # conda create --file envs/kmer.yml;
