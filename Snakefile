@@ -212,7 +212,7 @@ rule bwa:
   conda:
     "env/align.yml"
   shell:
-    """bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} | samtools sort -o {output}"""
+    """bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} |samtools addreplacerg -r "@RG\tID:{wildcards.sra}\tSM:{wildcards.sra}\tPL:Illumina\tLB:{wildcards.sra}" - | samtools sort -o {output}"""
 
 rule fastp:
   input:
