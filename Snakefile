@@ -10,7 +10,6 @@ IAPEY = "/scratch/xzhuo/genomes/mm10/mm10.IAPEY_LTR.lite.bed"
 LTR5_HS = "/scratch/xzhuo/genomes/hg38/reAnno_hg38.LTR5_Hs.bed"
 MM10_SIZE = "/scratch/genomes/mm10/mm10_lite.size"
 HG38_SIZE = "/scratch/genomes/hg38/hg38_lite.size"
-FISHER_PY = "scripts/fisher.py"
 
 rule all:
   input:
@@ -33,6 +32,8 @@ rule cat_list:
     expand("bed/{sra}.{ltr}.list", sra=SRAS,allow_missing=True)
   output:
     "all_dedup.{ltr}.list"
+  conda:
+    "env/align.yml"
   shell:
     "cat {input} > {output}"
 
@@ -41,6 +42,8 @@ rule cat_fisher:
     expand("bed/{sra}.{ltr}.fisher.txt", sra=SRAS,allow_missing=True)
   output:
     "all_dedup.{ltr}.fisher.txt"
+  conda:
+    "env/align.yml"
   shell:
     "cat {input} > {output}"
 
@@ -49,6 +52,8 @@ rule cat_bam:
     expand("bam/{sra}_dedup.bam", sra=SRAS)
   output:
     "all_dedup.bam"
+  conda:
+    "env/align.yml"
   shell:
     "samtools cat -o {output} {input}"
 
@@ -62,12 +67,13 @@ rule LTR5_fisher:
     lst = "bed/{sra}.LTR5_Hs.list"
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
+  conda:
+    "env/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="LTR5_Hs" > {output.fisher}
     """
-    # "python3 {FISHER_PY} -m LTR5_Hs -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
 rule IAPEY_fisher:
   input:
@@ -79,12 +85,13 @@ rule IAPEY_fisher:
     lst = "bed/{sra}.IAPEY.list"
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
+  conda:
+    "env/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="IAPEY" > {output.fisher}
     """
-    # "python3 {FISHER_PY} -m IAPEY -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
 rule RLTR6_fisher:
   input:
@@ -96,12 +103,13 @@ rule RLTR6_fisher:
     lst = "bed/{sra}.RLTR6_Mm.list"
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
+  conda:
+    "env/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR6_Mm" > {output.fisher}
     """
-    # "python3 {FISHER_PY} -m RLTR6_Mm -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
 rule fisher:
   input:
@@ -113,14 +121,13 @@ rule fisher:
     lst = "bed/{sra}.RLTR4_Mm.list"
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
-  # conda:
-  #   "pybedtools"
+  conda:
+    "env/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR4_Mm" > {output.fisher}
     """
-    # "python3 {FISHER_PY} -m RLTR4_Mm -i {input.bed} -r {input.rmsk} -g {input.gsize} -o {output.fisher} -l {output.lst}"
 
 rule mlv_cat:
   input:
