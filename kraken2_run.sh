@@ -1,7 +1,6 @@
 #!/bin/bash
 
-KRAKEN2_INSTALL_DIR=~/kraken2;
-KRAKEN_DB=~/kraken2_db;
+source config.sh
 
 SRR=( \
 	DRR349010 \
@@ -13,6 +12,7 @@ SRR=( \
 	);
 
 # conda init;
+# conda create --file envs/kmer.yml;
 # conda activate kmer;
 
 for id in ${SRR[@]};do
