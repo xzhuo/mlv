@@ -33,7 +33,7 @@ rule cat_list:
   output:
     "all_dedup.{ltr}.list"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "cat {input} > {output}"
 
@@ -43,7 +43,7 @@ rule cat_fisher:
   output:
     "all_dedup.{ltr}.fisher.txt"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "cat {input} > {output}"
 
@@ -53,7 +53,7 @@ rule cat_bam:
   output:
     "all_dedup.bam"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "samtools cat -o {output} {input}"
 
@@ -68,7 +68,7 @@ rule LTR5_fisher:
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
@@ -86,7 +86,7 @@ rule IAPEY_fisher:
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
@@ -104,7 +104,7 @@ rule RLTR6_fisher:
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
@@ -122,7 +122,7 @@ rule fisher:
   params:
     cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
@@ -135,7 +135,7 @@ rule mlv_cat:
   output:
     "all_dedup.mlv.count.txt"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "cat {input} > {output}"
 
@@ -148,7 +148,7 @@ rule mlv_count:
   output:
     "bed/{sra}.mlv.count.txt"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "bedtools intersect -a {input.mlv} -b {input.bed} -c | perl -slane {params.cmd:q} -- -sra={wildcards.sra} > {output}"
 
@@ -174,7 +174,7 @@ rule split_bedpe: # splite bedped to a hg38 bed and a mm10 bed file. use the raw
     hg38 = "bed/{sra}.hg38.bed",
     mm10 = "bed/{sra}.mm10.bed"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "perl -slane {params.cmd:q} -- -sra={wildcards.sra} {input}"
 
@@ -186,7 +186,7 @@ rule bedpe:
   params:
     cmd = r"""next if $F[0] eq "." || $F[3] eq ".";($ref1,$chr1)=split /_/, $F[0], 2;($ref2,$chr2)=split /_/,$F[3], 2;next if $ref1 eq $ref2; next if length($chr1)>=6 || length($chr2)>=6; print $_"""
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "samtools view -b -F 0X800 -F 0X400 {input} |samtools collate -O - | bedtools bamtobed -bedpe -i stdin| perl -lane {params.cmd:q} > {output}"
 
@@ -197,17 +197,9 @@ rule markdup:
     bam = "bam/{sra}_dedup.bam",
     m = "bam/{sra}_picard.txt"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     "picard MarkDuplicates -I {input} -O {output.bam} -M {output.m}"
-
-# rule sort_bam:
-#   input:
-#     "bam/{sra}_fastp.bam"
-#   output:
-#     "bam/{sra}_fastp.sort.bam"
-#   shell:
-#     "samtools sort -o {output} {input}"
 
 rule bwa:
   input:
@@ -217,7 +209,7 @@ rule bwa:
   threads:
     4
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} |samtools addreplacerg -r "@RG\tID:{wildcards.sra}\tSM:{wildcards.sra}\tPL:Illumina\tLB:{wildcards.sra}" - | samtools sort -o {output}"""
 
@@ -229,6 +221,6 @@ rule fastp:
     json = "fastp_fq/{sra}_fastp.json",
     html = "fastp_fq/{sra}_fastp.html"
   conda:
-    "env/align.yml"
+    "envs/align.yml"
   shell:
     """fastp --dedup -i {input[0]} -I {input[1]} -j {output.json} -h {output.html} -o {output.fq[0]} -O {output.fq[1]}"""
