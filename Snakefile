@@ -207,7 +207,7 @@ rule bwa:
   output:
     "bam/{sra}_fastp.sort.bam"
   threads:
-    4
+    workflow.cores
   conda:
     "envs/align.yml"
   shell:
