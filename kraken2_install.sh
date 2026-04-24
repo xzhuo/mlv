@@ -4,6 +4,12 @@ mkdir -p $KRAKEN2_INSTALL_DIR
 mkdir -p $KRAKEN_DB
 git clone https://github.com/DerrickWood/kraken2.git
 
+# a bug fixed in pull request #1015
+# cd kraken2
+# git fetch origin pull/1015/head:1015
+# git switch 1015
+# cd ../
+
 kraken2/install_kraken2.sh $KRAKEN2_INSTALL_DIR
 # You may have to specify the compiler if needed, for example with gcc-15:
 # CC=gcc-15 CXX=g++-15 kraken2/install_kraken2.sh $KRAKEN2_INSTALL_DIR
