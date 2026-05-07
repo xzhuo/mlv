@@ -7,9 +7,10 @@ source config.sh
 # conda create --file envs/kmer.yml;
 # conda activate kmer;
 
+mkdir -p fastq;
+cd fastq;
 for id in ${SRR[@]};do
-	mkdir -p fastq/$id;
-	cd fastq;
+	mkdir -p ${id};
 	aws s3 sync s3://sra-pub-run-odp/sra/${id} ${id} --no-sign-request;
 	if [ -f ${id}/${id} ]; then
 		fasterq-dump ${id}/${id} --threads $THREADS;
