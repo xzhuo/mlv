@@ -101,7 +101,7 @@ rule bedpe:
   output:
     "bedpe/{sra}_dedup.bedpe"
   params:
-    cmd = r"""next if $F[0] eq "." || $F[3] eq ".";($kraken,$ref1,$chr1)=split /\|/, $F[0];($kraken,$ref2,$chr2)=split /\|/,$F[3];next if $ref1 eq $ref2; next if length($chr1)>=6 || length($chr2)>=6; print $_"""
+    cmd = r"""next if $F[0] eq "." || $F[3] eq ".";($kraken,$ref1,$chr1)=split /\|/, $F[0];($kraken,$ref2,$chr2)=split /\|/,$F[3];next if $ref1 eq $ref2; print $_"""
   conda:
     "envs/align.yml"
   shell:
