@@ -1,10 +1,10 @@
 FILES = glob_wildcards('fastq/{sra}_mosaic_dust_1.fastq')
 SRAS = FILES.sra
 
-HG38_MM10 = "/scratch/genomes/hg38_mm10/10xATAC/refdata-cellranger-atac-GRCh38-and-mm10-1.2.0/fasta/genome.fa"
-RLTR4_MM = "/scratch/xzhuo/genomes/mm10/RLTR4_Mm.mm10.bed"
-MM10_SIZE = "/scratch/genomes/mm10/mm10_lite.size"
-HG38_SIZE = "/scratch/genomes/hg38/hg38_lite.size"
+COMBINED = "genome/combined_genome.fna"
+RLTR4_MM = "genome/RLTR4_Mm.mm39.ncbi.bed"
+MOUSE_SIZE = "genome/GCF_000001635.27_GRCm39_genomic.chrom_size"
+HUMAN_SIZE = "genome/GCF_009914755.1_T2T-CHM13v2.0_genomic.chrom_size"
 
 rule all:
   input:
@@ -55,7 +55,7 @@ rule fisher:
   input:
     bed = "bed/{sra}.mm10.bed",
     rmsk = RLTR4_MM,
-    gsize = MM10_SIZE
+    gsize = MOUSE_SIZE
   output:
     fisher = "bed/{sra}.RLTR4_Mm.fisher.txt",
     lst = "bed/{sra}.RLTR4_Mm.list"
