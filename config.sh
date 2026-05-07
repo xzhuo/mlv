@@ -2,7 +2,7 @@
 KRAKEN2_INSTALL_DIR=~/kraken2
 KRAKEN_DB=~/kraken2_db
 THREADS=4
-COMBINED_GENOME=genome/combined_genome.fna
+GENOME_DIR=genome
 
 SRR=( \
 	DRR349010 \

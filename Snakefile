@@ -2,12 +2,7 @@ FILES = glob_wildcards('fastq/{sra}_mosaic_dust_1.fastq')
 SRAS = FILES.sra
 
 HG38_MM10 = "/scratch/genomes/hg38_mm10/10xATAC/refdata-cellranger-atac-GRCh38-and-mm10-1.2.0/fasta/genome.fa"
-MM10_RMSK = "/scratch/xzhuo/genomes/mm10/mm10.rmsk.class.lite.bed"
-MLV = "/scratch/xzhuo/xenograft_fq/mlv.mm10.bed"
 RLTR4_MM = "/scratch/xzhuo/genomes/mm10/RLTR4_Mm.mm10.bed"
-RLTR6_MM = "/scratch/xzhuo/genomes/mm10/mm10.RLTR6_Mm.lite.bed"
-IAPEY = "/scratch/xzhuo/genomes/mm10/mm10.IAPEY_LTR.lite.bed"
-LTR5_HS = "/scratch/xzhuo/genomes/hg38/reAnno_hg38.LTR5_Hs.bed"
 MM10_SIZE = "/scratch/genomes/mm10/mm10_lite.size"
 HG38_SIZE = "/scratch/genomes/hg38/hg38_lite.size"
 
@@ -22,10 +17,8 @@ rule all:
     "all_dedup.bam",
     expand("bedpe/{sra}_dedup.bedpe", sra=SRAS),
     expand("bed/{sra}.{ref}.bed", sra=SRAS, ref=["hg38", "mm10"]),
-    expand("bed/{sra}.mlv.count.txt", sra=SRAS),
-    "all_dedup.mlv.count.txt",
-    expand("all_dedup.{ltr}.fisher.txt", ltr=["RLTR4_Mm", "RLTR6_Mm", "IAPEY", "LTR5_Hs"]),
-    expand("all_dedup.{ltr}.list", ltr=["RLTR4_Mm", "RLTR6_Mm", "IAPEY", "LTR5_Hs"])
+    expand("all_dedup.{ltr}.fisher.txt", ltr=["RLTR4_Mm"]),
+    expand("all_dedup.{ltr}.list", ltr=["RLTR4_Mm"])
 
 rule cat_list:
   input:
@@ -57,59 +50,6 @@ rule cat_bam:
   shell:
     "samtools cat -o {output} {input}"
 
-rule LTR5_fisher:
-  input:
-    bed = "bed/{sra}.hg38.bed",
-    rmsk = LTR5_HS,
-    gsize = HG38_SIZE
-  output:
-    fisher = "bed/{sra}.LTR5_Hs.fisher.txt",
-    lst = "bed/{sra}.LTR5_Hs.list"
-  params:
-    cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
-  conda:
-    "envs/align.yml"
-  shell:
-    """
-    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="LTR5_Hs" > {output.fisher}
-    """
-
-rule IAPEY_fisher:
-  input:
-    bed = "bed/{sra}.mm10.bed",
-    rmsk = IAPEY,
-    gsize = MM10_SIZE
-  output:
-    fisher = "bed/{sra}.IAPEY.fisher.txt",
-    lst = "bed/{sra}.IAPEY.list"
-  params:
-    cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
-  conda:
-    "envs/align.yml"
-  shell:
-    """
-    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="IAPEY" > {output.fisher}
-    """
-
-rule RLTR6_fisher:
-  input:
-    bed = "bed/{sra}.mm10.bed",
-    rmsk = RLTR6_MM,
-    gsize = MM10_SIZE
-  output:
-    fisher = "bed/{sra}.RLTR6_Mm.fisher.txt",
-    lst = "bed/{sra}.RLTR6_Mm.list"
-  params:
-    cmd = r"""{$num = $F[-1] if /Number of overlaps/;($left,$right,$two,$ratio) = @F if EOF}END{print join("\t",$s,$te,$num,$ratio,$two,$left,$right)}"""
-  conda:
-    "envs/align.yml"
-  shell:
-    """
-    bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
-    bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR6_Mm" > {output.fisher}
-    """
 
 rule fisher:
   input:
@@ -128,29 +68,6 @@ rule fisher:
     bedtools intersect -a {input.bed} -b {input.rmsk} -u |cut -f4 > {output.lst};
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR4_Mm" > {output.fisher}
     """
-
-rule mlv_cat:
-  input:
-    expand("bed/{sra}.mlv.count.txt", sra=SRAS)
-  output:
-    "all_dedup.mlv.count.txt"
-  conda:
-    "envs/align.yml"
-  shell:
-    "cat {input} > {output}"
-
-rule mlv_count:
-  input:
-    bed = "bed/{sra}.mm10.bed",
-    mlv = MLV
-  params:
-    cmd = r"""print join("\t",$sra,@F[3,6])"""
-  output:
-    "bed/{sra}.mlv.count.txt"
-  conda:
-    "envs/align.yml"
-  shell:
-    "bedtools intersect -a {input.mlv} -b {input.bed} -c | perl -slane {params.cmd:q} -- -sra={wildcards.sra} > {output}"
 
 rule split_bedpe: # splite bedped to a hg38 bed and a mm10 bed file. use the raw string so I don't have to escape everything anymore!
   input:
