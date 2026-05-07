@@ -16,7 +16,7 @@ rule all:
     expand("bam/{sra}_dedup.bam", sra=SRAS),
     "all_dedup.bam",
     expand("bedpe/{sra}_dedup.bedpe", sra=SRAS),
-    expand("bed/{sra}.{ref}.bed", sra=SRAS, ref=["hg38", "mm10"]),
+    expand("bed/{sra}.{ref}.bed", sra=SRAS, ref=["human", "mouse"]),
     expand("all_dedup.{ltr}.fisher.txt", ltr=["RLTR4_Mm"]),
     expand("all_dedup.{ltr}.list", ltr=["RLTR4_Mm"])
 
@@ -53,7 +53,7 @@ rule cat_bam:
 
 rule fisher:
   input:
-    bed = "bed/{sra}.mm10.bed",
+    bed = "bed/{sra}.mouse.bed",
     rmsk = RLTR4_MM,
     gsize = MOUSE_SIZE
   output:
@@ -69,27 +69,27 @@ rule fisher:
     bedtools fisher -a {input.bed} -b {input.rmsk} -g {input.gsize} | perl -slane {params.cmd:q} -- -s={wildcards.sra} -te="RLTR4_Mm" > {output.fisher}
     """
 
-rule split_bedpe: # splite bedped to a hg38 bed and a mm10 bed file. use the raw string so I don't have to escape everything anymore!
+rule split_bedpe: # splite bedped to a human bed and a mouse bed file. use the raw string so I don't have to escape everything anymore!
   input:
     "bedpe/{sra}_dedup.bedpe"
   params:
-    cmd = r"""{($ref1,$chr1)=split /_/, $F[0], 2;
-         ($ref2,$chr2)=split /_/,$F[3], 2;
+    cmd = r"""{($kraken,$ref1,$chr1)=split /\|/, $F[0];
+         ($kraken,$ref2,$chr2)=split /\|/,$F[3];
          push @{$hash{$ref1}}, [ $chr1,$F[1],$F[2],$F[6],$F[7],$F[8] ];
          push @{$hash{$ref2}},[ $chr2,$F[4],$F[5],$F[6],$F[7],$F[9] ]
          }END{
-           @mm10 = sort {$a->[0] cmp $b->[0] || $a->[1] <=> $b->[1]} @{$hash{"mm10"}};
-           @hg38 = sort {$a->[0] cmp $b->[0] || $a->[1] <=> $b->[1]} @{$hash{"GRCh38"}};
-           open(A, ">", "bed/$sra.mm10.bed");
-           foreach $i (@mm10){print A join("\t",@{$i})};
+           @mouse = sort {$a->[0] cmp $b->[0] || $a->[1] <=> $b->[1]} @{$hash{"10090"}};
+           @human = sort {$a->[0] cmp $b->[0] || $a->[1] <=> $b->[1]} @{$hash{"9606"}};
+           open(A, ">", "bed/$sra.mouse.bed");
+           foreach $i (@mouse){print A join("\t",@{$i})};
            close A;
-           open(B, ">", "bed/$sra.hg38.bed");
-           foreach $i (@hg38){print B join("\t",@{$i})};
+           open(B, ">", "bed/$sra.human.bed");
+           foreach $i (@human){print B join("\t",@{$i})};
            close B;}"""
 
   output:
-    hg38 = "bed/{sra}.hg38.bed",
-    mm10 = "bed/{sra}.mm10.bed"
+    human = "bed/{sra}.human.bed",
+    mouse = "bed/{sra}.mouse.bed"
   conda:
     "envs/align.yml"
   shell:
@@ -128,7 +128,7 @@ rule bwa:
   conda:
     "envs/align.yml"
   shell:
-    """bwa mem -5SP -t {threads} {HG38_MM10} {input[0]} {input[1]} |samtools addreplacerg -r "@RG\tID:{wildcards.sra}\tSM:{wildcards.sra}\tPL:Illumina\tLB:{wildcards.sra}" - | samtools sort -o {output}"""
+    """bwa mem -5SP -t {threads} {COMBINED} {input[0]} {input[1]} |samtools addreplacerg -r "@RG\tID:{wildcards.sra}\tSM:{wildcards.sra}\tPL:Illumina\tLB:{wildcards.sra}" - | samtools sort -o {output}"""
 
 rule fastp:
   input:
