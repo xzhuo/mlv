@@ -1,6 +1,6 @@
 FROM condaforge/miniforge3
 
-RUN apt-get update && apt-get install build-essential git libz-dev -y
+RUN apt-get update && apt-get install build-essential parallel git libz-dev -y
 
 RUN git clone https://github.com/xzhuo/mlv.git
 WORKDIR /mlv
