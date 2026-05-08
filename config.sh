@@ -1,6 +1,6 @@
 # Configuration file for Kraken2 installation and database setup
-KRAKEN2_INSTALL_DIR=kraken2_bin
-KRAKEN_DB=kraken2_db
+KRAKEN2_INSTALL_DIR=~/kraken2
+KRAKEN_DB=~/kraken2_db
 THREADS=4
 GENOME_DIR=genome
 
