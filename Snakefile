@@ -1,8 +1,11 @@
 FILES = glob_wildcards('fastq/{sra}_mosaic_dust_1.fastq')
 SRAS = FILES.sra
 
-COMBINED = "genome/combined_genome.fna"
+# provided in the repo:
 RLTR4_MM = "genome/RLTR4_Mm.mm39.ncbi.bed"
+
+# please make sure the dir matches the GENOME_DIR in the config.sh file.
+COMBINED = "genome/combined_genome.fna"
 MOUSE_SIZE = "genome/GCF_000001635.27_GRCm39_genomic.chrom_size"
 HUMAN_SIZE = "genome/GCF_009914755.1_T2T-CHM13v2.0_genomic.chrom_size"
 
