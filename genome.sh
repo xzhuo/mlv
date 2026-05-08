@@ -13,6 +13,6 @@ bwa index combined_genome.fna
 # index and create chromosome size files:
 samtools faidx GCF_009914755.1_T2T-CHM13v2.0_genomic.fna
 samtools faidx GCF_000001635.27_GRCm39_genomic.fna
-perl -lne '@F=split /\||\s+/;print join("\t",@F[2,3])' GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.fai > GCF_009914755.1_T2T-CHM13v2.0_genomic.chrom_size
-perl -lne '@F=split /\||\s+/;print join("\t",@F[2,3])' GCF_000001635.27_GRCm39_genomic.fna.fai > GCF_000001635.27_GRCm39_genomic.chrom_size
+perl -lne '@F=split /\||\s+/;print join("\t",@F[2,3])' GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.fai | sort -k1,1 -k2,2n > GCF_009914755.1_T2T-CHM13v2.0_genomic.chrom_size
+perl -lne '@F=split /\||\s+/;print join("\t",@F[2,3])' GCF_000001635.27_GRCm39_genomic.fna.fai | sort -k1,1 -k2,2n > GCF_000001635.27_GRCm39_genomic.chrom_size
 cd ../
