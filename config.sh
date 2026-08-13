@@ -15,3 +15,6 @@ SRR=( \
  	# DRR349014 \
  	# DRR349015 \
 	);
+
+# Alternatively, you can read the SRR accessions from a text file (one accession per line) using the following command:
+# mapfile -t SRR < Acc_List.txt
