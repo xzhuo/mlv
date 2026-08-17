@@ -8,12 +8,12 @@ The pipeline can be modified to investigate other viral integration and cross-sp
 
 ## Pipeline overview
 
-* Build a custom (human-mouse) Kraken2 datase
-* Download fastq files from SRA
-* Run Kraken2 on either end of paired fastq files separately
-* Retain only human-mouse chimeric paired-end reads
-* Remove reads with low-complexity or low-quality with dustMasker and fastp
-* Align remaining high quality human-mouse chimeric reads to a combined human-mouse reference genome
+* Build a custom (human-mouse) Kraken2 datase.
+* Download fastq files from SRA.
+* Run Kraken2 on either end of paired fastq files separately.
+* Retain only human-mouse chimeric paired-end reads.
+* Remove reads with low-complexity or low-quality with dustMasker and fastp.
+* Align remaining high quality human-mouse chimeric reads to a combined human-mouse reference genome.
 * Catalog and calculate the enrichment of human-MLV chimeric reads among all mapped human-mouse chimeric reads.
 
 ## Manual
