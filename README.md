@@ -67,13 +67,19 @@ The enrichment of human-MLV chimeric reads among all human-mouse chimeric reads 
 
     Columns in the file:
 
-    > Column1: accession
-    > Column2: should be "RLTR4_Mm" when testing the enrichment of MLV
-    > Column3: number of human-MLV chimeric reads in each paired fastq files
-    > Column4: enrichment ratio
-    > Column5: two-tail P-value
-    > Column6: left-tail P-value
-    > Column7: right-tail P-value
+    > Column1: accession.
+    >
+    > Column2: should be "RLTR4_Mm" when testing the enrichment of MLV.
+    >
+    > Column3: number of human-MLV chimeric reads in each paired fastq files.
+    >
+    > Column4: enrichment ratio.
+    >
+    > Column5: two-tail P-value.
+    >
+    > Column6: left-tail P-value.
+    >
+    > Column7: right-tail P-value.
 
 * all_dedup.RLTR4_Mm.list:
 A list of identified human-MLV chimeric reads
