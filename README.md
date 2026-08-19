@@ -1,8 +1,6 @@
-# Readme
+# Kmeric: kmer-based chimeric reads identifier
 
-## Kmeric: kmer-based chimeric reads identifier
-
-Murine Leukemia virus (MLV) may infect human cells. To efficiently identify MLV integration within human genome, we developed the kmeric pipeline to quickly identify human-MLV chimeric reads from patient-derived xenograft (PDX) paired-end sequencing libraries using Kraken2. 
+Murine Leukemia virus (MLV) may infect human cells. To efficiently identify MLV integration within human genome, we developed the kmeric pipeline to quickly identify human-MLV chimeric reads from patient-derived xenograft (PDX) paired-end sequencing libraries using Kraken2.
 
 The pipeline can be modified to investigate other viral integration and cross-species transmission events.
 
@@ -66,13 +64,16 @@ all deduplicated human-mouse chimeric reads aligned to the CHM13-mm39 genome in 
 
 * all_dedup.RLTR4_Mm.fisher.txt
 The enrichment of human-MLV chimeric reads among all human-mouse chimeric reads calculated by Bedtools fisher.
-Column1: accession
-Column2: should be "RLTR4_Mm" when testing the enrichment of MLV
-Column3: number of human-MLV chimeric reads in each paired fastq files
-Column4: enrichment ratio
-Column5: two-tail P-value
-Column6: left-tail P-value
-Column7: right-tail P-value
+
+    Columns in the file:
+
+    > Column1: accession
+    > Column2: should be "RLTR4_Mm" when testing the enrichment of MLV
+    > Column3: number of human-MLV chimeric reads in each paired fastq files
+    > Column4: enrichment ratio
+    > Column5: two-tail P-value
+    > Column6: left-tail P-value
+    > Column7: right-tail P-value
 
 * all_dedup.RLTR4_Mm.list:
 A list of identified human-MLV chimeric reads
