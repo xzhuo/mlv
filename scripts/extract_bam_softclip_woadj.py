@@ -6,7 +6,7 @@ import re
 
 
 def extract_softclip(bam_file, out, part):
-    bam = pysam.AlignmentFile(bam_file, "r")
+    bam = pysam.AlignmentFile(bam_file, "rb")
     with open(out, 'w') as outfile:
         # Iterate through each read in the BAM file 
         for read in bam:
@@ -18,7 +18,7 @@ def extract_softclip(bam_file, out, part):
                     forward_sequence = read.get_forward_sequence()
                     subseq = forward_sequence[offset:] if part == 'clip' else forward_sequence[:offset]
                     sa = read.get_tag('SA') if read.has_tag('SA') else None
-                    outfile.write(f">{read.query_name}_clip\t# {sa}\n{subseq}\n")
+                    outfile.write(f">{read.query_name}_{part}\t# {sa}\n{subseq}\n")
 
 
 def main():
