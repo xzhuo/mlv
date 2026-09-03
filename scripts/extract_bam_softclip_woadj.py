@@ -5,7 +5,8 @@ import re
 # from Bio.Seq import Seq
 
 
-def extract_softclip(bam_file, out, part):
+
+def extract_softclip(bam_file, out, part, supplementary_only):
     bam = pysam.AlignmentFile(bam_file, "rb")
     with open(out, 'w') as outfile:
         # Iterate through each read in the BAM file 
@@ -18,7 +19,8 @@ def extract_softclip(bam_file, out, part):
                     forward_sequence = read.get_forward_sequence()
                     subseq = forward_sequence[offset:] if part == 'clip' else forward_sequence[:offset]
                     sa = read.get_tag('SA') if read.has_tag('SA') else None
-                    outfile.write(f">{read.query_name}_{part}\t# {sa}\n{subseq}\n")
+                    if (not supplementary_only) or read.has_tag('SA'):
+                        outfile.write(f">{read.query_name}_{part}\t# {sa}\n{subseq}\n")
 
 
 def main():
@@ -27,6 +29,8 @@ def main():
                         help='input bam file')
     parser.add_argument('-o', '--out', type=str, required=True,
                         help='output extracted all softclipped seq in fasta format')
+    parser.add_argument('-s', '--supplementary_only', action='store_true',
+                        help='extract only subseq with supplementary alignment, default: False')
     parser.add_argument('-p', '--part', type=str, choices=["clip", "align"], required=True,
                         help='extract softclipped seq or the subsequence with softclipped region removed, options: clip or align')
 
@@ -36,7 +40,7 @@ def main():
         raise ValueError("--bam file does not exist!")
     if args.part not in ['clip', 'align']:
         raise ValueError("--part must be either 'clip' or 'align'")
-    extract_softclip(bam_file, args.out, args.part)
+    extract_softclip(bam_file, args.out, args.part, args.supplementary_only)
 
 if __name__ == '__main__':
     main()
